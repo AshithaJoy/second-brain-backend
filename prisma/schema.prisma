@@ -1,0 +1,243 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PostType {
+  REEL
+  CAROUSEL
+  STORY
+  NOTE
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  POSTED
+  ARCHIVED
+}
+
+enum CollabStatus {
+  DREAM_BRAND  @map("dream brand")
+  REACHED_OUT  @map("reached out")
+  REPLIED      @map("replied")
+  DISCUSSING   @map("discussing")
+  BOOKED       @map("booked")
+  COMPLETED    @map("completed")
+  GHOSTED      @map("ghosted 😭")
+}
+
+enum PaymentStatus {
+  UNPAID
+  INVOICE_SENT @map("invoice sent")
+  PAID
+}
+
+model User {
+  id             String          @id @default(uuid())
+  email          String          @unique
+  passwordHash   String
+  role           Role            @default(USER)
+  credits        Int             @default(5)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  posts          Post[]
+  dumps          Dump[]
+  shoots         Shoot[]
+  collabs        Collab[]
+  reelBreakdowns ReelBreakdown[]
+  aiJobs         AIJob[]
+  notifications  Notification[]
+  brolls         BRoll[]
+  journalEntries JournalEntry[]
+
+  @@index([email])
+}
+
+model Post {
+  id        String     @id @default(uuid())
+  title     String
+  date      String     // YYYY-MM-DD
+  type      PostType   @default(REEL)
+  status    PostStatus @default(DRAFT)
+  mood      String
+  caption   String?    @db.Text
+  hashtags  String?    @db.Text
+  notes     String?    @db.Text
+  shootId   String?    @unique
+  shoot     Shoot?     @relation(fields: [shootId], references: [id], onDelete: SetNull)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([userId, date])
+}
+
+model Dump {
+  id        String   @id @default(uuid())
+  title     String
+  text      String   @db.Text
+  mood      String
+  ts        String   // modified time description (e.g., "2h ago", "yesterday")
+  archived  Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, archived])
+}
+
+model Shoot {
+  id        String   @id @default(uuid())
+  name      String
+  shootDate String   // YYYY-MM-DD
+  slotsJson String   @db.Text // JSON-serialized slot structure (morning, afternoon, evening)
+  postId    String?  @unique
+  post      Post?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, shootDate])
+}
+
+model Collab {
+  id               String        @id @default(uuid())
+  brand            String
+  contactName      String?
+  email            String?
+  platform         String        @default("Instagram")
+  status           CollabStatus  @default(DREAM_BRAND)
+  quote            Int           @default(0)
+  negotiatedAmount Int           @default(0)
+  dueDate          String?
+  paymentStatus    PaymentStatus @default(UNPAID)
+  notes            String?       @db.Text
+  pitchDraft       String?       @db.Text
+  followUpDraft    String?       @db.Text
+  scriptText       String?       @db.Text
+  wardrobe         String?
+  props            String?
+  briefFileName    String?
+  briefFileUrl     String?
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliverables     Deliverable[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([userId, status])
+}
+
+model Deliverable {
+  id        String   @id @default(uuid())
+  text      String
+  type      String   // reel, story, carousel, photo, custom
+  postId    String?
+  shootId   String?
+  completed Boolean  @default(false)
+  collabId  String
+  collab    Collab   @relation(fields: [collabId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([collabId])
+}
+
+model ReelBreakdown {
+  id           String   @id @default(uuid())
+  url          String
+  insightsJson String   @db.Text // JSON array of insights
+  stepsJson    String   @db.Text // JSON array of steps
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, url])
+}
+
+model AIJob {
+  id         String   @id @default(uuid())
+  queueName  String   // name of the queue (e.g. "analyze-reel", "rewrite-dump")
+  status     String   // PENDING, COMPLETED, FAILED
+  resultJson String?  @db.Text // JSON result string containing payload response
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, status])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  text      String
+  read      Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model BRoll {
+  id           String   @id @default(uuid())
+  title        String
+  description  String   @db.Text
+  mood         String
+  visualTags   String   @db.Text // JSON string representing array of strings
+  emotionTags  String   @db.Text // JSON string representing array of strings
+  location     String?
+  lighting     String?
+  motionType   String?
+  audioFeeling String?
+  timeOfDay    String?
+  weather      String?
+  clipType     String   @default("video")
+  cinematicUse String?
+  energy       String   @default("soft")
+  notes        String?  @db.Text
+  fileUrl      String?  @db.Text
+  thumbnailUrl String?  @db.Text
+  favorite     Boolean  @default(false)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, mood])
+}
+
+model JournalEntry {
+  id           String   @id @default(uuid())
+  weekStart    String   // YYYY-MM-DD
+  mood         String
+  followers    Int      @default(0)
+  posts        Int      @default(0)
+  reach        Int      @default(0)
+  saves        Int      @default(0)
+  engagement   String   @default("0")
+  reflection   String   @db.Text
+  wins         String   @db.Text
+  lessons      String   @db.Text
+  notes        String?  @db.Text
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, weekStart])
+}
