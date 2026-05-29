@@ -52,12 +52,19 @@ if (process.env.CLIENT_URL) {
   allowedOrigins.push(process.env.CLIENT_URL);
 }
 
+// Allow all *.vercel.app subdomains (covers preview + production deployments)
+const vercelOriginPattern = /^https:\/\/[a-z0-9-]+-instabrain\.vercel\.app$/;
+
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       const cleaned = origin.replace(/\/$/, "");
-      if (allowedOrigins.includes(cleaned)) {
+      if (
+        allowedOrigins.includes(cleaned) ||
+        vercelOriginPattern.test(cleaned) ||
+        cleaned === "https://second-brain-instabrain.vercel.app"
+      ) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
