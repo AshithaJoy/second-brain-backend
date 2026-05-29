@@ -43,7 +43,9 @@ const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
   "http://localhost:5173",
   "https://instabrain.co.in",
-  "https://www.instabrain.co.in"
+  "https://www.instabrain.co.in",
+  "https://second-brain.co.in",
+  "https://www.second-brain.co.in"
 ];
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
