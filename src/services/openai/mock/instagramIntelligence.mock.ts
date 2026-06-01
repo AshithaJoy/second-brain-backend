@@ -1,31 +1,66 @@
-export function generateMockInstagramIntelligence(profile: any, analytics: any) {
+export function generateMockInstagramIntelligence(profile: any, media: any[], analytics: any) {
   const username = profile.username || "test_creator";
-  const pillarList = Object.entries(analytics.contentPillars)
+  const pillarList = Object.entries(analytics?.contentPillars || {})
     .sort((a: any, b: any) => b[1] - a[1])
     .map(([k]) => k);
 
   const primaryPillar = pillarList[0] || "productivity";
 
+  // Generate hook suggestions dynamically from REAL media if available
+  const hookSuggestions = [];
+  const realPostsWithCaptions = (media || []).filter((m: any) => m.caption && m.caption.trim().length > 0);
+
+  if (realPostsWithCaptions.length > 0) {
+    // Post 1
+    const p1 = realPostsWithCaptions[0];
+    const orig1 = p1.caption.split("\n")[0].substring(0, 60);
+    hookSuggestions.push({
+      original: orig1,
+      improved: `This is why your hook "${orig1}" underperforms (How to fix)`,
+      rationale: "Replacing a passive statement with an active curiosity loop immediately hooks creator attention."
+    });
+
+    // Post 2 if available
+    if (realPostsWithCaptions.length > 1) {
+      const p2 = realPostsWithCaptions[1];
+      const orig2 = p2.caption.split("\n")[0].substring(0, 60);
+      hookSuggestions.push({
+        original: orig2,
+        improved: `Stop writing posts like: ${orig2}. Do this instead.`,
+        rationale: "Introduces urgency and a contrarian take that stops the scroll."
+      });
+    } else {
+      hookSuggestions.push({
+        original: "Mindful workspace aesthetic.",
+        improved: "The exact workspace layout that doubled my editing speed (Tour)",
+        rationale: "Swapping a passive statement for an active curiosity loop immediately hooks creator attention."
+      });
+    }
+  } else {
+    // Default mock fallback
+    hookSuggestions.push(
+      {
+        original: "Mindful workspace aesthetic.",
+        improved: "The exact workspace layout that doubled my editing speed (Tour)",
+        rationale: "Swapping a passive statement for an active curiosity loop immediately hooks creator attention."
+      },
+      {
+        original: "Planning my next reel slots.",
+        improved: "Stop scheduling posts before you build these 3 soft systems.",
+        rationale: "Introduces urgency and introduces a contrarian take that stops the scroll."
+      }
+    );
+  }
+
   return {
     mode: "mock",
     opportunities: [
-      analytics.contentDistribution.carouselPercentage === 0
+      analytics?.contentDistribution?.carouselPercentage === 0
         ? "No carousels posted recently. Add multi-slide Carousels to share actionable guides and boost saves."
         : "You haven't posted a carousel in 21 days. Try using a 5-step checklist style to diversify formats.",
       "Educational tips are highly active but currently underrepresented in your pillars."
     ],
-    hookSuggestions: [
-      {
-        "original": "Mindful workspace aesthetic.",
-        "improved": "The exact workspace layout that doubled my editing speed (Tour)",
-        "rationale": "Swapping a passive statement for an active curiosity loop immediately hooks creator attention."
-      },
-      {
-        "original": "Planning my next reel slots.",
-        "improved": "Stop scheduling posts before you build these 3 soft systems.",
-        "rationale": "Introduces urgency and introduces a contrarian take that stops the scroll."
-      }
-    ],
+    hookSuggestions,
     suggestedNewHooks: [
       "This 1 change saved me 15 hours of editing weekly.",
       "The workspace design nobody talks about in 2026.",

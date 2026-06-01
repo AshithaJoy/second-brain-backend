@@ -230,7 +230,7 @@ Ensure all generated hooks, captions, content recommendations, rewrites, and pla
 
     // Mock mode with latency simulation
     await delay(2000 + Math.random() * 1000);
-    return generateMockInstagramIntelligence(profile, analytics);
+    return generateMockInstagramIntelligence(profile, media, analytics);
   }
 
   static async futureCollabSuggestions(brands: any[], userId?: string): Promise<any> {

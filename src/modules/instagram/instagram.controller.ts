@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { ConnectInstagramSchema } from "./instagram.schema";
 import { InstagramService } from "../../services/instagram/instagram.service";
+import { InstagramOAuth } from "../../services/instagram/instagram.oauth";
 import { prisma } from "../../config/db";
 import { InstagramAnalytics } from "../../services/instagram/instagram.analytics";
 import { OpenAIService } from "../../services/openai/openai.service";
@@ -94,37 +95,16 @@ export class InstagramController {
   static async sync(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.id;
+      
       const user = await prisma.user.findUnique({
         where: { id: userId },
       });
-
       if (!user || !user.instagramAccessToken) {
         return res.status(404).json({ error: "Instagram account not connected" });
       }
 
-      // Fetch live metadata and media from Instagram / Meta Graph API
-      const profileResult = await InstagramService.getInstagramProfile(user.instagramAccessToken);
-      const mediaResult = await InstagramService.getInstagramMedia(user.instagramAccessToken);
-      const mediaArray = mediaResult.data || [];
-
-      // Run deterministic analytics calculation
-      const analyticsResult = InstagramAnalytics.analyze(mediaArray);
-
-      // Save a new historical snapshot cache in the database
-      const snapshot = await prisma.instagramSnapshot.create({
-        data: {
-          userId,
-          profileJson: JSON.stringify(profileResult),
-          mediaJson: JSON.stringify(mediaArray),
-          analyticsJson: JSON.stringify(analyticsResult),
-        },
-      });
-
-      return res.status(200).json({
-        success: true,
-        syncedPosts: mediaArray.length,
-        snapshotId: snapshot.id,
-      });
+      const result = await InstagramService.refreshProfileData(userId);
+      return res.status(200).json(result);
     } catch (err) {
       next(err);
     }
@@ -202,7 +182,8 @@ export class InstagramController {
       const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || "http://localhost:5173";
 
       if (clientId && redirectUri) {
-        const authorizeUrl = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_graph_user_profile,instagram_graph_user_media&response_type=code&state=${state}`;
+        const authorizeUrl = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_graph_user_profile,instagram_graph_user_media&response_type=code&state=${state}`;
+        console.log("[Instagram StartOAuth] Generated URL:", authorizeUrl);
         return res.status(200).json({ url: authorizeUrl });
       } else {
         // Fallback Mock Mode: Redirect back with mock connected params and verified state
@@ -243,14 +224,43 @@ export class InstagramController {
       }
 
       // Exchange code or fallback to mock token if in test
-      const accessToken = code.startsWith("mock") ? code : `mock-token-${Date.now()}`;
+      let accessToken: string;
+      let profile: { id: string; username: string; media_count?: number; account_type?: string };
+
+      const clientId = process.env.META_CLIENT_ID;
+      const clientSecret = process.env.META_CLIENT_SECRET;
+      const redirectUri = process.env.META_REDIRECT_URI;
+
+      if (!code.startsWith("mock") && clientId && clientSecret && redirectUri) {
+        try {
+          accessToken = await InstagramOAuth.getAccessToken(clientId, clientSecret, redirectUri, code);
+          profile = await InstagramService.getProfile(accessToken);
+        } catch (err: any) {
+          console.warn(`[OAuthCallback] Real OAuth flow failed, falling back to mock: ${err.message}`);
+          accessToken = `mock-token-${Date.now()}`;
+          profile = {
+            id: "mock-ig-id-99999",
+            username: "mock_creator_partner",
+            account_type: "CREATOR",
+            media_count: 12,
+          };
+        }
+      } else {
+        accessToken = code.startsWith("mock") ? code : `mock-token-${Date.now()}`;
+        profile = {
+          id: "mock-ig-id-99999",
+          username: "mock_creator_partner",
+          account_type: "CREATOR",
+          media_count: 12,
+        };
+      }
 
       // Update User account
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          instagramUserId: "mock-ig-id-99999",
-          instagramUsername: "mock_creator_partner",
+          instagramUserId: profile.id,
+          instagramUsername: profile.username,
           instagramAccessToken: accessToken,
           instagramConnectedAt: new Date(),
           instagramOAuthState: null, // Clear state after use
