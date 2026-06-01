@@ -1,8 +1,12 @@
 import { CaptionResult } from "../../../modules/ai/schemas/caption.schema";
 
-export function generateMockCaptions(title: string, mood: string, hooksData?: any): CaptionResult {
+export function generateMockCaptions(title: string, mood: string, hooksData?: any, profile?: any): CaptionResult {
   const cleanTitle = title.replace(/^✨ AI:\s*/i, "") || "Aesthetic Vlog Idea";
   const cleanMood = mood || "cinematic";
+
+  const niche = profile?.primaryNiche || "Lifestyle";
+  const goal = profile?.primaryGoal || "Grow followers";
+  const tone = profile?.toneOfVoice || "Friendly";
 
   let hooksHookText = "";
   if (hooksData && Array.isArray(hooksData.hooks) && hooksData.hooks.length > 0) {
@@ -11,8 +15,8 @@ export function generateMockCaptions(title: string, mood: string, hooksData?: an
   }
 
   const shortCaptions = [
-    `Quiet morning resets are the only way I stay sane.${hooksHookText} #${cleanTitle.replace(/\s+/g, "").toLowerCase()}`,
-    `Documenting > perfecting. Rebuilding daily focus systems slow and steady.`
+    `Quiet morning resets are the only way I stay sane as a ${niche.toLowerCase()} creator.${hooksHookText} #${cleanTitle.replace(/\s+/g, "").toLowerCase()}`,
+    `Documenting > perfecting. Rebuilding daily focus systems slow and steady to achieve: ${goal.toLowerCase()}.`
   ];
 
   const longCaptions = [

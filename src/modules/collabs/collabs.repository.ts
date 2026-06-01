@@ -54,6 +54,14 @@ export class CollabsRepository {
 
   static async update(id: string, userId: string, data: UpdateCollabInput & { deliverables?: any[] }) {
     return prisma.$transaction(async (tx) => {
+      const existing = await tx.collab.findFirst({
+        where: { id, userId },
+      });
+      if (!existing) {
+        const err: any = new Error("Collab not found");
+        err.statusCode = 404;
+        throw err;
+      }
       await tx.collab.update({
         where: { id },
         data: {
@@ -78,8 +86,8 @@ export class CollabsRepository {
       });
 
       if (data.deliverables) {
-        const existing = await tx.deliverable.findMany({ where: { collabId: id } });
-        const existingIds = existing.map(e => e.id);
+        const existingDelivs = await tx.deliverable.findMany({ where: { collabId: id } });
+        const existingIds = existingDelivs.map(e => e.id);
         const incomingIds = data.deliverables.map(d => d.id).filter(Boolean);
 
         const toDelete = existingIds.filter(eid => !incomingIds.includes(eid));
@@ -117,15 +125,21 @@ export class CollabsRepository {
       }
 
       return tx.collab.findFirst({
-        where: { id },
+        where: { id, userId },
         include: { deliverables: true },
       });
     }) as any;
   }
 
   static async delete(id: string, userId: string) {
-    return prisma.collab.deleteMany({
+    const result = await prisma.collab.deleteMany({
       where: { id, userId },
     });
+    if (result.count === 0) {
+      const err: any = new Error("Collab not found");
+      err.statusCode = 404;
+      throw err;
+    }
+    return result;
   }
 }

@@ -11,9 +11,9 @@ export class AIRepository {
     });
   }
 
-  static async getJob(id: string) {
-    return prisma.aIJob.findUnique({
-      where: { id },
+  static async getJob(id: string, userId: string) {
+    return prisma.aIJob.findFirst({
+      where: { id, userId },
     });
   }
 }

@@ -15,8 +15,14 @@ export class ReelsRepository {
   }
 
   static async delete(id: string, userId: string) {
-    return prisma.reelBreakdown.deleteMany({
+    const result = await prisma.reelBreakdown.deleteMany({
       where: { id, userId },
     });
+    if (result.count === 0) {
+      const err: any = new Error("Reel breakdown not found");
+      err.statusCode = 404;
+      throw err;
+    }
+    return result;
   }
 }

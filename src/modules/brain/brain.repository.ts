@@ -29,6 +29,14 @@ export class BrainRepository {
   }
 
   static async update(id: string, userId: string, data: UpdateDumpInput) {
+    const existing = await prisma.dump.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) {
+      const err: any = new Error("Dump not found");
+      err.statusCode = 404;
+      throw err;
+    }
     return prisma.dump.update({
       where: { id },
       data: {
@@ -42,8 +50,14 @@ export class BrainRepository {
   }
 
   static async delete(id: string, userId: string) {
-    return prisma.dump.deleteMany({
+    const result = await prisma.dump.deleteMany({
       where: { id, userId },
     });
+    if (result.count === 0) {
+      const err: any = new Error("Dump not found");
+      err.statusCode = 404;
+      throw err;
+    }
+    return result;
   }
 }

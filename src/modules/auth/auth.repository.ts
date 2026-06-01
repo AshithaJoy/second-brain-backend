@@ -17,6 +17,10 @@ export class AuthRepository {
         credits: true,
         createdAt: true,
         updatedAt: true,
+        instagramUserId: true,
+        instagramUsername: true,
+        instagramConnectedAt: true,
+        instagramOAuthState: true,
       },
     });
   }

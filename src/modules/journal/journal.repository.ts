@@ -35,6 +35,15 @@ export class JournalRepository {
   }
 
   static async update(id: string, userId: string, data: UpdateJournalEntryInput) {
+    const existing = await prisma.journalEntry.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) {
+      const err: any = new Error("Journal entry not found");
+      err.statusCode = 404;
+      throw err;
+    }
+
     const updateData: any = {};
     if (data.weekStart !== undefined) updateData.weekStart = data.weekStart;
     if (data.mood !== undefined) updateData.mood = data.mood;
@@ -55,8 +64,14 @@ export class JournalRepository {
   }
 
   static async delete(id: string, userId: string) {
-    return prisma.journalEntry.deleteMany({
+    const result = await prisma.journalEntry.deleteMany({
       where: { id, userId },
     });
+    if (result.count === 0) {
+      const err: any = new Error("Journal entry not found");
+      err.statusCode = 404;
+      throw err;
+    }
+    return result;
   }
 }

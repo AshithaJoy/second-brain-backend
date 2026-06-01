@@ -59,6 +59,13 @@ model User {
   notifications  Notification[]
   brolls         BRoll[]
   journalEntries JournalEntry[]
+  instagramUserId      String?
+  instagramUsername    String?
+  instagramAccessToken String?         @db.Text
+  instagramConnectedAt DateTime?
+  instagramOAuthState  String?
+  instagramSnapshots   InstagramSnapshot[]
+  creatorProfile       CreatorProfile?
 
   @@index([email])
 }
@@ -240,4 +247,38 @@ model JournalEntry {
   updatedAt    DateTime @updatedAt
 
   @@index([userId, weekStart])
+}
+
+model InstagramSnapshot {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileJson   String   @db.Text
+  mediaJson     String   @db.Text
+  analyticsJson String   @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+}
+
+model CreatorProfile {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  primaryNiche      String
+  secondaryNiches   Json      // JSON array of strings
+  primaryGoal       String
+  audienceSize      String
+  creatorStage      String
+  postingFrequency  String
+  preferredFormats  Json      // JSON array of strings
+  contentPillars    Json      // JSON array of strings
+  toneOfVoice       String
+  biggestChallenge  String
+  aiAssistanceLevel String
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
 }

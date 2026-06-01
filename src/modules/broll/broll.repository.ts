@@ -58,6 +58,15 @@ export class BRollRepository {
   }
 
   static async update(id: string, userId: string, data: UpdateBRollInput) {
+    const existing = await prisma.bRoll.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) {
+      const err: any = new Error("B-Roll clip not found");
+      err.statusCode = 404;
+      throw err;
+    }
+
     const updateData: any = {};
     if (data.title !== undefined) updateData.title = data.title;
     if (data.description !== undefined) updateData.description = data.description;
@@ -91,8 +100,14 @@ export class BRollRepository {
   }
 
   static async delete(id: string, userId: string) {
-    return prisma.bRoll.deleteMany({
+    const result = await prisma.bRoll.deleteMany({
       where: { id, userId },
     });
+    if (result.count === 0) {
+      const err: any = new Error("B-Roll clip not found");
+      err.statusCode = 404;
+      throw err;
+    }
+    return result;
   }
 }

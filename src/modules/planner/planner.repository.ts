@@ -35,6 +35,14 @@ export class PlannerRepository {
   }
 
   static async update(id: string, userId: string, data: UpdatePostInput) {
+    const existing = await prisma.post.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) {
+      const err: any = new Error("Post not found");
+      err.statusCode = 404;
+      throw err;
+    }
     // If shootId is provided as null/undefined, we might need special handling depending on Prisma
     return prisma.post.update({
       where: { id },
@@ -53,9 +61,15 @@ export class PlannerRepository {
   }
 
   static async delete(id: string, userId: string) {
-    return prisma.post.deleteMany({
+    const result = await prisma.post.deleteMany({
       where: { id, userId },
     });
+    if (result.count === 0) {
+      const err: any = new Error("Post not found");
+      err.statusCode = 404;
+      throw err;
+    }
+    return result;
   }
 
   static async findManyShoots(userId: string) {
@@ -87,6 +101,14 @@ export class PlannerRepository {
   }
 
   static async updateShoot(id: string, userId: string, data: any) {
+    const existing = await prisma.shoot.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) {
+      const err: any = new Error("Shoot not found");
+      err.statusCode = 404;
+      throw err;
+    }
     return prisma.shoot.update({
       where: { id },
       data: {
@@ -100,8 +122,14 @@ export class PlannerRepository {
   }
 
   static async deleteShoot(id: string, userId: string) {
-    return prisma.shoot.deleteMany({
+    const result = await prisma.shoot.deleteMany({
       where: { id, userId },
     });
+    if (result.count === 0) {
+      const err: any = new Error("Shoot not found");
+      err.statusCode = 404;
+      throw err;
+    }
+    return result;
   }
 }

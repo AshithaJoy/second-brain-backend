@@ -1,16 +1,20 @@
-export function generateMockRewrite(title: string, rawText: string) {
+export function generateMockRewrite(title: string, rawText: string, profile?: any) {
   const cleanTitle = title.replace(/^✨ AI:\s*/i, "") || "Aesthetic Vlog Idea";
   
+  const niche = profile?.primaryNiche || "Lifestyle";
+  const goal = profile?.primaryGoal || "Grow followers";
+  const tone = profile?.toneOfVoice || "Friendly";
+
   // High quality deterministic creator response
   const hooks = [
-    `"They say consistency is key, but here is the raw reality behind ${cleanTitle.toLowerCase()}..."`,
-    `"The secret to rebuilding your creator routine without burning out..."`,
-    `"POV: documenting the systems that keep you focused."`
+    `"They say consistency is key, but here is the raw reality behind ${cleanTitle.toLowerCase()} as a ${niche.toLowerCase()} creator..."`,
+    `"The secret to rebuilding your creator routine to achieve: ${goal.toLowerCase()}..."`,
+    `"POV: documenting the systems that keep you focused in a ${tone.toLowerCase()} way."`
   ];
   
   const captions = [
-    `Sometimes the best work happens in the quiet moments before the rest of the world wakes up. Here is a look at the system I'm building step by step. #${cleanTitle.replace(/\s+/g, "").toLowerCase()}`,
-    `Documenting > perfecting. Rebuilding daily workflow slowly one morning at a time. #creatorlife #routinereset`
+    `Sometimes the best work happens in the quiet moments before the rest of the world wakes up. Here is a look at the system I'm building step by step as a ${niche.toLowerCase()} creator. #${cleanTitle.replace(/\s+/g, "").toLowerCase()}`,
+    `Documenting > perfecting. Rebuilding daily workflow slowly to reach my goal: ${goal.toLowerCase()}. #creatorlife #routinereset`
   ];
 
   const shotIdeas = [

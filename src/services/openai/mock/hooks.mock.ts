@@ -1,14 +1,18 @@
 import { HookResult } from "../../../modules/ai/schemas/hook.schema";
 
-export function generateMockHooks(title: string, mood: string): HookResult {
+export function generateMockHooks(title: string, mood: string, profile?: any): HookResult {
   const cleanTitle = title.replace(/^✨ AI:\s*/i, "") || "Aesthetic Vlog Idea";
   const cleanMood = mood || "cinematic";
 
+  const niche = profile?.primaryNiche || "Lifestyle";
+  const goal = profile?.primaryGoal || "Grow followers";
+  const tone = profile?.toneOfVoice || "Friendly";
+
   // Viral hooks targeting modern retention-focused short-form storytelling
   const hooks = [
-    `"They say consistency is key, but here is the raw reality behind ${cleanTitle.toLowerCase()}..."`,
-    `"The secret to rebuilding your routine around ${cleanTitle.toLowerCase()} without burning out..."`,
-    `"POV: documenting the systems that actually keep you focused as a creator."`
+    `"They say consistency is key, but here is the raw reality behind ${cleanTitle.toLowerCase()} as a ${niche.toLowerCase()} creator..."`,
+    `"The secret to rebuilding your routine around ${cleanTitle.toLowerCase()} to ${goal.toLowerCase()}..."`,
+    `"POV: documenting the systems that actually keep you focused in a ${tone.toLowerCase()} way."`
   ];
 
   const openingShots = [

@@ -14,6 +14,8 @@ import reelsRoutes from "./modules/reels/reels.routes";
 import aiRoutes from "./modules/ai/ai.routes";
 import brollRoutes from "./modules/broll/broll.routes";
 import journalRoutes from "./modules/journal/journal.routes";
+import instagramRoutes from "./modules/instagram/instagram.routes";
+import profileRoutes from "./modules/creator-profile/profile.routes";
 
 import { validateEnv } from "./config/env";
 import { prisma } from "./config/db";
@@ -153,6 +155,8 @@ app.use("/api/reels", reelsRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/broll", brollRoutes);
 app.use("/api/journal", journalRoutes);
+app.use("/api/instagram", instagramRoutes);
+app.use("/api/profile", profileRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

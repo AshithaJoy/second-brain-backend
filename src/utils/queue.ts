@@ -39,7 +39,7 @@ export async function safeEnqueue(
     try {
       const jobId = data.jobId;
       if (queueName === "rewrite-dump") {
-        const result = await OpenAIService.rewriteDump(data.title, data.text);
+        const result = await OpenAIService.rewriteDump(data.title, data.text, data.userId);
         await prisma.dump.update({
           where: { id: data.dumpId },
           data: {
@@ -56,7 +56,7 @@ export async function safeEnqueue(
           },
         });
       } else if (queueName === "generate-hooks") {
-        const result = await OpenAIService.generateHooks(data.title, data.mood);
+        const result = await OpenAIService.generateHooks(data.title, data.mood, data.userId);
 
         await prisma.post.update({
           where: { id: data.postId },
@@ -172,7 +172,7 @@ export async function safeEnqueue(
             }
           } catch (e) {}
         }
-        const result = await OpenAIService.generateCaptions(data.title, data.mood, hooksData);
+        const result = await OpenAIService.generateCaptions(data.title, data.mood, hooksData, data.userId);
         await prisma.post.update({
           where: { id: data.postId },
           data: { notes: JSON.stringify(result) },

@@ -13,7 +13,7 @@ if (isRedisEnabled && redisConnection) {
       const { dumpId, title, text, userId, jobId } = job.data;
 
       try {
-        const result = await OpenAIService.rewriteDump(title, text);
+        const result = await OpenAIService.rewriteDump(title, text, userId);
 
         // Update Dump in DB with rewritten text and title
         await prisma.dump.update({
@@ -56,7 +56,7 @@ if (isRedisEnabled && redisConnection) {
       const { postId, title, mood, userId, jobId } = job.data;
 
       try {
-        const result = await OpenAIService.generateHooks(title, mood);
+        const result = await OpenAIService.generateHooks(title, mood, userId);
 
         // Save structured result as serialized JSON inside Post.caption
         await prisma.post.update({
@@ -226,7 +226,7 @@ if (isRedisEnabled && redisConnection) {
           }
         }
 
-        const result = await OpenAIService.generateCaptions(title, mood, hooksData);
+        const result = await OpenAIService.generateCaptions(title, mood, hooksData, userId);
 
         // Save result as serialized JSON inside Post.notes field
         await prisma.post.update({
