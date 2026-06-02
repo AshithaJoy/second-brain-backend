@@ -36,4 +36,31 @@ export class InstagramOAuth {
 
     return data.access_token;
   }
+
+  static async exchangeForLongLivedToken(
+    clientSecret: string,
+    shortToken: string
+  ): Promise<{ accessToken: string; expiresIn: number; tokenType: string }> {
+    if (shortToken.startsWith("mock") || shortToken.startsWith("mock-")) {
+      return {
+        accessToken: shortToken,
+        expiresIn: 5183944, // 60 days in seconds
+        tokenType: "bearer"
+      };
+    }
+
+    const url = `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${clientSecret}&access_token=${shortToken}`;
+    const res = await fetch(url);
+    const data: any = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error?.message || `Long-lived token exchange failed: ${res.status}`);
+    }
+
+    return {
+      accessToken: data.access_token,
+      expiresIn: data.expires_in,
+      tokenType: data.token_type || "bearer"
+    };
+  }
 }

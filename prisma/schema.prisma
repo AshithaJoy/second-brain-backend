@@ -59,11 +59,13 @@ model User {
   notifications  Notification[]
   brolls         BRoll[]
   journalEntries JournalEntry[]
-  instagramUserId      String?
-  instagramUsername    String?
-  instagramAccessToken String?         @db.Text
-  instagramConnectedAt DateTime?
-  instagramOAuthState  String?
+  instagramUserId         String?
+  instagramUsername       String?
+  instagramAccessToken    String?         @db.Text
+  instagramConnectedAt    DateTime?
+  instagramTokenExpiresAt DateTime?
+  instagramTokenType      String?
+  instagramOAuthState     String?
   instagramSnapshots   InstagramSnapshot[]
   creatorProfile       CreatorProfile?
 

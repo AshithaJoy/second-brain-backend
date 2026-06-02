@@ -15,6 +15,7 @@ router.post("/connect", InstagramController.connect);
 router.get("/profile", InstagramController.getProfile);
 router.get("/media", InstagramController.getMedia);
 router.delete("/disconnect", InstagramController.disconnect);
+router.get("/status", InstagramController.getStatus);
 router.post("/sync", InstagramController.sync);
 router.get("/intelligence", InstagramController.getIntelligence);
 

@@ -9,13 +9,33 @@ import { OpenAIService } from "../../services/openai/openai.service";
 export class InstagramController {
   static async connect(req: Request, res: Response, next: NextFunction) {
     try {
-      const { accessToken } = ConnectInstagramSchema.parse(req.body);
+      const { accessToken: incomingToken } = ConnectInstagramSchema.parse(req.body);
       const userId = req.user!.id;
 
-      // Exchange/verify token with Meta Graph API
+      let accessToken = incomingToken;
+      let expiresAt: Date | null = null;
+      let tokenType: string | null = null;
+
+      const clientSecret = process.env.META_CLIENT_SECRET;
+      
+      if (clientSecret && !incomingToken.startsWith("mock") && !incomingToken.startsWith("mock-")) {
+        try {
+          const longLivedRes = await InstagramOAuth.exchangeForLongLivedToken(clientSecret, incomingToken);
+          accessToken = longLivedRes.accessToken;
+          expiresAt = new Date(Date.now() + longLivedRes.expiresIn * 1000);
+          tokenType = "LONG_LIVED";
+        } catch (err: any) {
+          console.error(`[Instagram Connect] Failed to exchange for long-lived token: ${err.message}`);
+          expiresAt = new Date(Date.now() + 3600 * 1000);
+          tokenType = "SHORT_LIVED";
+        }
+      } else if (incomingToken.startsWith("mock") || incomingToken.startsWith("mock-")) {
+        expiresAt = new Date(Date.now() + 5183944 * 1000);
+        tokenType = "LONG_LIVED";
+      }
+
       const profile = await InstagramService.getInstagramProfile(accessToken);
 
-      // Save to authenticated user
       const user = await prisma.user.update({
         where: { id: userId },
         data: {
@@ -23,6 +43,8 @@ export class InstagramController {
           instagramUsername: profile.username,
           instagramAccessToken: accessToken,
           instagramConnectedAt: new Date(),
+          instagramTokenExpiresAt: expiresAt,
+          instagramTokenType: tokenType,
         },
       });
 
@@ -65,9 +87,16 @@ export class InstagramController {
         return res.status(404).json({ error: "Instagram account not connected" });
       }
 
+      console.log(`[Instagram Debug] step=controller.getMedia.start userId=${userId} instagramUserId=${user.instagramUserId} endpoint=GET /api/instagram/media status=processing`);
+
       const media = await InstagramService.getInstagramMedia(user.instagramAccessToken);
+      
+      console.log(`[Instagram Debug] step=controller.getMedia.success userId=${userId} instagramUserId=${user.instagramUserId} endpoint=GET /api/instagram/media status=success mediaCount=${media.data?.length}`);
+      
       return res.status(200).json(media);
-    } catch (err) {
+    } catch (err: any) {
+      const userId = req.user?.id;
+      console.error(`[Instagram Debug] step=controller.getMedia.error userId=${userId} endpoint=GET /api/instagram/media status=error error=${err.message} stack=${err.stack}`);
       next(err);
     }
   }
@@ -103,9 +132,16 @@ export class InstagramController {
         return res.status(404).json({ error: "Instagram account not connected" });
       }
 
+      console.log(`[Instagram Debug] step=controller.sync.start userId=${userId} instagramUserId=${user.instagramUserId} endpoint=POST /api/instagram/sync status=processing`);
+
       const result = await InstagramService.refreshProfileData(userId);
+
+      console.log(`[Instagram Debug] step=controller.sync.success userId=${userId} instagramUserId=${user.instagramUserId} endpoint=POST /api/instagram/sync status=success`);
+
       return res.status(200).json(result);
-    } catch (err) {
+    } catch (err: any) {
+      const userId = req.user?.id;
+      console.error(`[Instagram Debug] step=controller.sync.error userId=${userId} endpoint=POST /api/instagram/sync status=error error=${err.message} stack=${err.stack}`);
       next(err);
     }
   }
@@ -200,12 +236,15 @@ export class InstagramController {
       const { code, state, error, error_description } = req.query;
       const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || "http://localhost:5173";
 
+      console.log(`[Instagram Debug] step=controller.oauthCallback.start endpoint=GET /api/instagram/oauth/callback query=${JSON.stringify(req.query)} status=processing`);
+
       if (error) {
-        console.error("Meta OAuth error:", error, error_description);
+        console.error(`[Instagram Debug] step=controller.oauthCallback.metaError error=${error} error_description=${error_description} status=error`);
         return res.redirect(`${frontendUrl}/settings?instagram_error=${encodeURIComponent(String(error_description || error))}`);
       }
 
       if (!state || typeof state !== "string" || !code || typeof code !== "string") {
+        console.error(`[Instagram Debug] step=controller.oauthCallback.invalidParams status=error`);
         return res.redirect(`${frontendUrl}/settings?instagram_error=Invalid%20request%20parameters`);
       }
 
@@ -215,16 +254,22 @@ export class InstagramController {
       });
 
       if (!user) {
+        console.error(`[Instagram Debug] step=controller.oauthCallback.stateNotFound state=${state} status=error`);
         return res.redirect(`${frontendUrl}/settings?instagram_error=OAuth%20state%20verification%20failed%20or%20expired`);
       }
 
+      console.log(`[Instagram Debug] step=controller.oauthCallback.userFound userId=${user.id} status=processing`);
+
       // Verify the state matches what we stored to prevent CSRF
       if (user.instagramOAuthState !== state) {
+        console.error(`[Instagram Debug] step=controller.oauthCallback.csrfMismatch userId=${user.id} status=error`);
         return res.redirect(`${frontendUrl}/settings?instagram_error=CSRF%20state%20mismatch`);
       }
 
       // Exchange code or fallback to mock token if in test
       let accessToken: string;
+      let expiresAt: Date | null = null;
+      let tokenType: string | null = null;
       let profile: { id: string; username: string; media_count?: number; account_type?: string };
 
       const clientId = process.env.META_CLIENT_ID;
@@ -233,21 +278,34 @@ export class InstagramController {
       const allowMocks = process.env.ALLOW_INSTAGRAM_MOCKS === "true";
 
       if (!allowMocks && (code.startsWith("mock") || code.startsWith("mock-"))) {
-        console.error("[OAuthCallback] Mock connection attempt rejected due to ALLOW_INSTAGRAM_MOCKS=false");
+        console.error(`[Instagram Debug] step=controller.oauthCallback.mockRejected userId=${user.id} status=error error=Mock connection rejected due to ALLOW_INSTAGRAM_MOCKS=false`);
         return res.redirect(`${frontendUrl}/settings?instagram_connect=error&instagram_error=OAuth+Failed`);
       }
 
       if (!code.startsWith("mock") && clientId && clientSecret && redirectUri) {
         try {
-          accessToken = await InstagramOAuth.getAccessToken(clientId, clientSecret, redirectUri, code);
+          console.log(`[Instagram Debug] step=controller.oauthCallback.exchangeStart userId=${user.id} clientId=${clientId} redirectUri=${redirectUri} status=processing`);
+          const shortToken = await InstagramOAuth.getAccessToken(clientId, clientSecret, redirectUri, code);
+          console.log(`[Instagram Debug] step=controller.oauthCallback.tokenReceived userId=${user.id} status=processing`);
+          
+          console.log(`[Instagram Debug] step=controller.oauthCallback.longLivedExchangeStart userId=${user.id} status=processing`);
+          const longLivedRes = await InstagramOAuth.exchangeForLongLivedToken(clientSecret, shortToken);
+          accessToken = longLivedRes.accessToken;
+          expiresAt = new Date(Date.now() + longLivedRes.expiresIn * 1000);
+          tokenType = "LONG_LIVED";
+          console.log(`[Instagram Debug] step=controller.oauthCallback.longLivedTokenReceived userId=${user.id} expiresAt=${expiresAt} status=processing`);
+
           profile = await InstagramService.getProfile(accessToken);
+          console.log(`[Instagram Debug] step=controller.oauthCallback.profileReceived userId=${user.id} instagramUserId=${profile.id} instagramUsername=${profile.username} status=processing`);
         } catch (err: any) {
-          console.error(`[OAuthCallback] Real OAuth token exchange failed: ${err.message}`);
+          console.error(`[Instagram Debug] step=controller.oauthCallback.exchangeError userId=${user.id} error=${err.message} stack=${err.stack}`);
           if (!allowMocks) {
             return res.redirect(`${frontendUrl}/settings?instagram_connect=error&instagram_error=OAuth+Failed`);
           } else {
             console.warn(`[OAuthCallback] Real OAuth flow failed, falling back to mock: ${err.message}`);
             accessToken = `mock-token-${Date.now()}`;
+            expiresAt = new Date(Date.now() + 5183944 * 1000);
+            tokenType = "LONG_LIVED";
             profile = {
               id: "mock-ig-id-99999",
               username: "mock_creator_partner",
@@ -258,10 +316,13 @@ export class InstagramController {
         }
       } else {
         if (!allowMocks) {
-          console.error("[OAuthCallback] Client credentials missing or mock code provided with ALLOW_INSTAGRAM_MOCKS=false");
+          console.error(`[Instagram Debug] step=controller.oauthCallback.mocksForbiddenNoCredentials userId=${user.id} status=error`);
           return res.redirect(`${frontendUrl}/settings?instagram_connect=error&instagram_error=OAuth+Failed`);
         } else {
+          console.log(`[Instagram Debug] step=controller.oauthCallback.useMockFallback userId=${user.id} status=processing`);
           accessToken = code.startsWith("mock") ? code : `mock-token-${Date.now()}`;
+          expiresAt = new Date(Date.now() + 5183944 * 1000);
+          tokenType = "LONG_LIVED";
           profile = {
             id: "mock-ig-id-99999",
             username: "mock_creator_partner",
@@ -272,6 +333,7 @@ export class InstagramController {
       }
 
       // Update User account
+      console.log(`[Instagram Debug] step=controller.oauthCallback.updateUserDB userId=${user.id} instagramUserId=${profile.id} status=processing`);
       await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -279,16 +341,54 @@ export class InstagramController {
           instagramUsername: profile.username,
           instagramAccessToken: accessToken,
           instagramConnectedAt: new Date(),
+          instagramTokenExpiresAt: expiresAt,
+          instagramTokenType: tokenType,
           instagramOAuthState: null, // Clear state after use
         }
       });
 
+      console.log(`[Instagram Debug] step=controller.oauthCallback.success userId=${user.id} status=success`);
       // Redirect user back to frontend settings page with success moment query param
       return res.redirect(`${frontendUrl}/settings?instagram_connect=success`);
     } catch (err: any) {
-      console.error("OAuth callback exception:", err);
+      console.error(`[Instagram Debug] step=controller.oauthCallback.exception error=${err.message} stack=${err.stack} status=error`);
       const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || "http://localhost:5173";
       return res.redirect(`${frontendUrl}/settings?instagram_error=${encodeURIComponent(err.message || "OAuth failed")}`);
+    }
+  }
+
+  static async getStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user || !user.instagramAccessToken) {
+        return res.status(200).json({ connected: false });
+      }
+
+      let daysRemaining = null;
+      let requiresReconnect = false;
+
+      if (user.instagramTokenExpiresAt) {
+        const diffMs = user.instagramTokenExpiresAt.getTime() - Date.now();
+        daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        if (diffMs <= 0) {
+          requiresReconnect = true;
+        }
+      }
+
+      return res.status(200).json({
+        connected: true,
+        username: user.instagramUsername,
+        expiresAt: user.instagramTokenExpiresAt,
+        daysRemaining,
+        requiresReconnect,
+        tokenType: user.instagramTokenType || "UNKNOWN",
+      });
+    } catch (err) {
+      next(err);
     }
   }
 }
