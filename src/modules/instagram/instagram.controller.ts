@@ -230,14 +230,38 @@ export class InstagramController {
       const clientId = process.env.META_CLIENT_ID;
       const clientSecret = process.env.META_CLIENT_SECRET;
       const redirectUri = process.env.META_REDIRECT_URI;
+      const isProduction = process.env.NODE_ENV === "production";
+
+      if (isProduction && code.startsWith("mock")) {
+        console.error("[OAuthCallback] Mock connection attempt rejected in production environment");
+        return res.redirect(`${frontendUrl}/settings?instagram_error=${encodeURIComponent("Instagram connection failed: Mock connection forbidden in production")}`);
+      }
 
       if (!code.startsWith("mock") && clientId && clientSecret && redirectUri) {
         try {
           accessToken = await InstagramOAuth.getAccessToken(clientId, clientSecret, redirectUri, code);
           profile = await InstagramService.getProfile(accessToken);
         } catch (err: any) {
-          console.warn(`[OAuthCallback] Real OAuth flow failed, falling back to mock: ${err.message}`);
-          accessToken = `mock-token-${Date.now()}`;
+          if (isProduction) {
+            console.error(`[OAuthCallback] Real OAuth flow failed in production: ${err.message}`);
+            return res.redirect(`${frontendUrl}/settings?instagram_error=${encodeURIComponent("Instagram connection failed: " + err.message)}`);
+          } else {
+            console.warn(`[OAuthCallback] Real OAuth flow failed, falling back to mock: ${err.message}`);
+            accessToken = `mock-token-${Date.now()}`;
+            profile = {
+              id: "mock-ig-id-99999",
+              username: "mock_creator_partner",
+              account_type: "CREATOR",
+              media_count: 12,
+            };
+          }
+        }
+      } else {
+        if (isProduction) {
+          console.error("[OAuthCallback] Client credentials missing or mock code provided in production");
+          return res.redirect(`${frontendUrl}/settings?instagram_error=${encodeURIComponent("Instagram connection failed: Missing configuration or mock code used")}`);
+        } else {
+          accessToken = code.startsWith("mock") ? code : `mock-token-${Date.now()}`;
           profile = {
             id: "mock-ig-id-99999",
             username: "mock_creator_partner",
@@ -245,14 +269,6 @@ export class InstagramController {
             media_count: 12,
           };
         }
-      } else {
-        accessToken = code.startsWith("mock") ? code : `mock-token-${Date.now()}`;
-        profile = {
-          id: "mock-ig-id-99999",
-          username: "mock_creator_partner",
-          account_type: "CREATOR",
-          media_count: 12,
-        };
       }
 
       // Update User account
