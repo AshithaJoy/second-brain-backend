@@ -357,6 +357,65 @@ export class InstagramController {
     }
   }
 
+  static async oauthDiagnostics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const clientId = process.env.META_CLIENT_ID;
+      const clientSecret = process.env.META_CLIENT_SECRET;
+      const redirectUri = process.env.META_REDIRECT_URI;
+      const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || "http://localhost:5173";
+      const nodeEnv = process.env.NODE_ENV;
+
+      const results: any = {
+        META_CLIENT_ID: clientId,
+        META_CLIENT_SECRET_LOADED: clientSecret ? "true" : "false",
+        META_REDIRECT_URI: redirectUri,
+        FRONTEND_URL: frontendUrl,
+        NODE_ENV: nodeEnv,
+        META_REDIRECT_URI_EXACT_MATCH: redirectUri === "https://second-brain-backend-production-43b4.up.railway.app/api/instagram/oauth/callback" ? "PASS" : "FAIL"
+      };
+
+      const form = new URLSearchParams();
+      form.append("client_id", clientId || "");
+      form.append("client_secret", clientSecret || "");
+      form.append("grant_type", "authorization_code");
+      form.append("redirect_uri", redirectUri || "");
+      form.append("code", "AQB_TEST_CODE_FOR_DIAGNOSTICS");
+
+      try {
+        const metaRes = await fetch("https://api.instagram.com/oauth/access_token", {
+          method: "POST",
+          body: form,
+        });
+
+        results.metaResponseStatus = metaRes.status;
+        results.metaResponseStatusText = metaRes.statusText;
+        results.metaResponseHeaders = {};
+        metaRes.headers.forEach((val, key) => {
+          results.metaResponseHeaders[key] = val;
+        });
+
+        const data = await metaRes.json();
+        results.metaResponseBody = data;
+      } catch (metaErr: any) {
+        results.metaResponseError = metaErr.message;
+      }
+
+      try {
+        const debugUrl = `https://graph.facebook.com/debug_token?input_token=dummy_token&access_token=${clientId}|${clientSecret}`;
+        const debugRes = await fetch(debugUrl);
+        results.facebookDebugTokenStatus = debugRes.status;
+        const debugData = await debugRes.json();
+        results.facebookDebugTokenBody = debugData;
+      } catch (debugErr: any) {
+        results.facebookDebugTokenError = debugErr.message;
+      }
+
+      return res.status(200).json(results);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async getStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.id;

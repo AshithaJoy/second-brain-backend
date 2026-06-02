@@ -4,17 +4,21 @@ const prisma = new PrismaClient();
 
 async function main() {
   const users = await prisma.user.findMany({
+    where: {
+      NOT: {
+        instagramOAuthState: null
+      }
+    },
     select: {
       id: true,
       email: true,
+      instagramOAuthState: true,
       instagramUserId: true,
       instagramUsername: true,
-      instagramConnectedAt: true,
-      instagramAccessToken: true,
     }
   });
 
-  console.log("=== DB Users ===");
+  console.log("=== Users with OAuth State ===");
   console.log(JSON.stringify(users, null, 2));
 }
 

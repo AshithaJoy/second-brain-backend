@@ -6,6 +6,7 @@ const router = Router();
 
 // Public redirect endpoint triggered by Meta
 router.get("/oauth/callback", InstagramController.oauthCallback);
+router.get("/oauth/diagnostics", InstagramController.oauthDiagnostics);
 
 // Protect other routes with JWT authentication
 router.use(authenticateJWT);

@@ -25,6 +25,12 @@ import * as queues from "./config/queues";
 dotenv.config();
 validateEnv();
 
+console.log("[Instagram Config]");
+console.log(`META_CLIENT_ID=${process.env.META_CLIENT_ID || ""}`);
+console.log(`META_CLIENT_SECRET_LOADED=${process.env.META_CLIENT_SECRET ? "true" : "false"}`);
+console.log(`META_REDIRECT_URI=${process.env.META_REDIRECT_URI || ""}`);
+console.log(`FRONTEND_URL=${process.env.FRONTEND_URL || ""}`);
+
 // Boot background workers conditionally
 if (process.env.REDIS_ENABLED === "true") {
   import("./workers/ai-jobs.worker")
