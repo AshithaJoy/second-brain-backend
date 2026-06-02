@@ -16,7 +16,10 @@ export function errorHandler(
     });
   }
 
-  const statusCode = err.statusCode || 500;
+  let statusCode = err.statusCode || 500;
+  if (err.name === "InstagramApiError" && (statusCode === 401 || statusCode === 403)) {
+    statusCode = 400;
+  }
   const message = err.message || "An unexpected server error occurred.";
   
   res.status(statusCode).json({
@@ -25,3 +28,4 @@ export function errorHandler(
     stack: process.env.NODE_ENV === "production" ? undefined : err.stack,
   });
 }
+
