@@ -230,11 +230,11 @@ export class InstagramController {
       const clientId = process.env.META_CLIENT_ID;
       const clientSecret = process.env.META_CLIENT_SECRET;
       const redirectUri = process.env.META_REDIRECT_URI;
-      const isProduction = process.env.NODE_ENV === "production";
+      const allowMocks = process.env.ALLOW_INSTAGRAM_MOCKS === "true";
 
-      if (isProduction && code.startsWith("mock")) {
-        console.error("[OAuthCallback] Mock connection attempt rejected in production environment");
-        return res.redirect(`${frontendUrl}/settings?instagram_error=${encodeURIComponent("Instagram connection failed: Mock connection forbidden in production")}`);
+      if (!allowMocks && (code.startsWith("mock") || code.startsWith("mock-"))) {
+        console.error("[OAuthCallback] Mock connection attempt rejected due to ALLOW_INSTAGRAM_MOCKS=false");
+        return res.redirect(`${frontendUrl}/settings?instagram_connect=error&instagram_error=OAuth+Failed`);
       }
 
       if (!code.startsWith("mock") && clientId && clientSecret && redirectUri) {
@@ -242,9 +242,9 @@ export class InstagramController {
           accessToken = await InstagramOAuth.getAccessToken(clientId, clientSecret, redirectUri, code);
           profile = await InstagramService.getProfile(accessToken);
         } catch (err: any) {
-          if (isProduction) {
-            console.error(`[OAuthCallback] Real OAuth flow failed in production: ${err.message}`);
-            return res.redirect(`${frontendUrl}/settings?instagram_error=${encodeURIComponent("Instagram connection failed: " + err.message)}`);
+          console.error(`[OAuthCallback] Real OAuth token exchange failed: ${err.message}`);
+          if (!allowMocks) {
+            return res.redirect(`${frontendUrl}/settings?instagram_connect=error&instagram_error=OAuth+Failed`);
           } else {
             console.warn(`[OAuthCallback] Real OAuth flow failed, falling back to mock: ${err.message}`);
             accessToken = `mock-token-${Date.now()}`;
@@ -257,9 +257,9 @@ export class InstagramController {
           }
         }
       } else {
-        if (isProduction) {
-          console.error("[OAuthCallback] Client credentials missing or mock code provided in production");
-          return res.redirect(`${frontendUrl}/settings?instagram_error=${encodeURIComponent("Instagram connection failed: Missing configuration or mock code used")}`);
+        if (!allowMocks) {
+          console.error("[OAuthCallback] Client credentials missing or mock code provided with ALLOW_INSTAGRAM_MOCKS=false");
+          return res.redirect(`${frontendUrl}/settings?instagram_connect=error&instagram_error=OAuth+Failed`);
         } else {
           accessToken = code.startsWith("mock") ? code : `mock-token-${Date.now()}`;
           profile = {

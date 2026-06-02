@@ -23,10 +23,10 @@ export class InstagramService {
   }
 
   static async getProfile(accessToken: string): Promise<{ id: string; username: string; account_type?: string; media_count?: number }> {
-    const isProduction = process.env.NODE_ENV === "production";
+    const allowMocks = process.env.ALLOW_INSTAGRAM_MOCKS === "true";
 
-    if (accessToken.startsWith("mock")) {
-      if (isProduction) {
+    if (accessToken.startsWith("mock") || accessToken.startsWith("mock-")) {
+      if (!allowMocks) {
         throw new Error("Instagram connection failed: Mock access tokens are forbidden in production");
       }
       return {
@@ -46,9 +46,9 @@ export class InstagramService {
       }
       return await res.json();
     } catch (err: any) {
-      if (isProduction) {
+      if (!allowMocks) {
         console.error(`[InstagramService.getProfile] Live request failed in production: ${err.message}`);
-        throw new Error(`Instagram connection failed: ${err.message}`);
+        throw new Error("Instagram API request failed");
       }
       console.warn(`[InstagramService.getProfile] Live request failed, falling back to mock profile: ${err.message}`);
       return {
@@ -65,10 +65,10 @@ export class InstagramService {
   }
 
   static async getMedia(accessToken: string): Promise<any[]> {
-    const isProduction = process.env.NODE_ENV === "production";
+    const allowMocks = process.env.ALLOW_INSTAGRAM_MOCKS === "true";
 
-    if (accessToken.startsWith("mock")) {
-      if (isProduction) {
+    if (accessToken.startsWith("mock") || accessToken.startsWith("mock-")) {
+      if (!allowMocks) {
         throw new Error("Instagram connection failed: Mock access tokens are forbidden in production");
       }
       return [
@@ -105,9 +105,9 @@ export class InstagramService {
       const result = await res.json();
       return result.data || [];
     } catch (err: any) {
-      if (isProduction) {
+      if (!allowMocks) {
         console.error(`[InstagramService.getMedia] Live request failed in production: ${err.message}`);
-        throw new Error(`Instagram connection failed: ${err.message}`);
+        throw new Error("Instagram API request failed");
       }
       console.warn(`[InstagramService.getMedia] Live request failed, falling back to mock media: ${err.message}`);
       return [
