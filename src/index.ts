@@ -187,6 +187,57 @@ app.get("/api/railway-audit", async (req, res) => {
   }
 });
 
+app.get("/api/railway-data", async (req, res) => {
+  try {
+    const email = "ashithamariya1998@gmail.com";
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        instagramUserId: true,
+        instagramUsername: true,
+        instagramConnectedAt: true,
+        snapshots: {
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, createdAt: true, profileJson: true, mediaJson: true, aiAnalysis: true }
+        },
+        creatorIntelligence: true,
+        creatorOpportunities: { orderBy: { createdAt: 'desc' }, take: 10 },
+        hookLibraries: { take: 5 }
+      }
+    });
+    
+    if (!user) {
+      return res.json({ error: "User not found" });
+    }
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        instagramUserId: user.instagramUserId,
+        instagramUsername: user.instagramUsername,
+        instagramConnectedAt: user.instagramConnectedAt
+      },
+      snapshots: user.snapshots.map(s => ({
+        id: s.id,
+        createdAt: s.createdAt,
+        profileJsonSize: s.profileJson ? JSON.stringify(s.profileJson).length : 0,
+        mediaJsonSize: s.mediaJson ? JSON.stringify(s.mediaJson).length : 0,
+        mediaItemCount: s.mediaJson ? (s.mediaJson as any[]).length : 0,
+        aiAnalysisCount: s.aiAnalysis.length,
+        aiAnalysisTop3: s.aiAnalysis.slice(0, 3)
+      })),
+      creatorIntelligence: user.creatorIntelligence,
+      opportunities: user.creatorOpportunities,
+      hooks: user.hookLibraries
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Global Error Handler
 app.use(errorHandler);
 
