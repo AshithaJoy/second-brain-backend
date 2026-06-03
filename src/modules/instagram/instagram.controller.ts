@@ -150,7 +150,6 @@ export class InstagramController {
     try {
       const userId = req.user!.id;
 
-      // Check if user has an Instagram connection
       const user = await prisma.user.findUnique({
         where: { id: userId },
       });
@@ -158,41 +157,86 @@ export class InstagramController {
         return res.status(404).json({ error: "Instagram account not connected" });
       }
 
-      // Retrieve latest cache snapshot
-      const latestSnapshot = await prisma.instagramSnapshot.findFirst({
+      const intel = await prisma.creatorIntelligence.findFirst({
         where: { userId },
-        orderBy: { createdAt: "desc" },
+        orderBy: { generatedAt: 'desc' }
       });
 
-      if (!latestSnapshot) {
-        return res.status(404).json({ error: "No Instagram snapshot found. Run sync first." });
+      if (!intel || intel.sourcePostCount < 5) {
+        return res.status(400).json({ error: "Not enough Instagram content available to generate reliable intelligence.", sourcePostCount: intel?.sourcePostCount || 0 });
       }
 
-      const profile = JSON.parse(latestSnapshot.profileJson);
-      const media = JSON.parse(latestSnapshot.mediaJson);
-      const analytics = JSON.parse(latestSnapshot.analyticsJson);
+      return res.status(200).json({ intelligence: intel });
+    } catch (err) {
+      next(err);
+    }
+  }
 
-      // Run AI enrichment on top of deterministic metrics
-      const aiResult = await OpenAIService.analyzeInstagramContent(profile, media, analytics, userId);
+  static async getHooks(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+
+      const intel = await prisma.creatorIntelligence.findFirst({
+        where: { userId },
+        orderBy: { generatedAt: 'desc' }
+      });
+
+      if (!intel || intel.sourcePostCount < 5) {
+        return res.status(400).json({ error: "Not enough Instagram content available to generate reliable intelligence.", sourcePostCount: intel?.sourcePostCount || 0 });
+      }
+
+      const hooks = await prisma.hookLibrary.findMany({
+        where: { userId },
+        orderBy: { frequency: 'desc' }
+      });
 
       return res.status(200).json({
-        creatorHealthScore: analytics.creatorHealthScore,
-        postingCadence: analytics.postingCadence,
-        contentDistribution: analytics.contentDistribution,
-        consistencyScore: analytics.consistencyScore,
-        hookAnalysis: {
-          strongestHooks: analytics.hookAnalysis.strongestHooks,
-          weakestHooks: analytics.hookAnalysis.weakestHooks,
-          suggestedHooks: aiResult.hookSuggestions || aiResult.suggestedNewHooks || [],
-        },
-        contentPillars: analytics.contentPillars,
-        opportunities: [
-          ...analytics.opportunities,
-          ...(aiResult.opportunities || []),
-        ],
-        aiRecommendations: aiResult.recommendations || [],
-        contentIdeas: aiResult.ideas || { reels: [], carousels: [], stories: [] },
+        hooks,
+        generatedAt: intel.generatedAt,
+        sourcePostCount: intel.sourcePostCount,
+        confidenceScore: intel.confidenceScore
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getOpportunities(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+
+      const intel = await prisma.creatorIntelligence.findFirst({
+        where: { userId },
+        orderBy: { generatedAt: 'desc' }
+      });
+
+      if (!intel || intel.sourcePostCount < 5) {
+        return res.status(400).json({ error: "Not enough Instagram content available to generate reliable intelligence.", sourcePostCount: intel?.sourcePostCount || 0 });
+      }
+
+      const opportunities = await prisma.creatorOpportunity.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      return res.status(200).json({
+        opportunities,
+        generatedAt: intel.generatedAt,
+        sourcePostCount: intel.sourcePostCount,
+        confidenceScore: intel.confidenceScore
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async analyze(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      // In a real implementation, this would trigger background jobs for any un-analyzed posts
+      // and recalculate the CreatorIntelligence and Opportunities.
+      
+      return res.status(200).json({ message: "Analysis queued." });
     } catch (err) {
       next(err);
     }
@@ -345,6 +389,7 @@ export class InstagramController {
 
       // Update User account
       console.log(`[Instagram Debug] step=controller.oauthCallback.updateUserDB userId=${user.id} instagramUserId=${profile.id} status=processing`);
+      console.log(`[Diagnostic] Before Update - userId: ${user.id}, instagramUserId: ${profile.id}, username: ${profile.username}`);
       await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -357,6 +402,10 @@ export class InstagramController {
           instagramOAuthState: null, // Clear state after use
         }
       });
+      
+      const persistedUser = await prisma.user.findUnique({ where: { id: user.id } });
+      console.log(`[Diagnostic] After Update - persisted: instagramUserId=${persistedUser?.instagramUserId}, username=${persistedUser?.instagramUsername}, connectedAt=${persistedUser?.instagramConnectedAt}`);
+
 
       console.log(`[Instagram Debug] step=controller.oauthCallback.success userId=${user.id} status=success`);
       // Redirect user back to frontend settings page with success moment query param

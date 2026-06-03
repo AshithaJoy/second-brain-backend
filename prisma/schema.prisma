@@ -68,6 +68,12 @@ model User {
   instagramOAuthState     String?
   instagramSnapshots   InstagramSnapshot[]
   creatorProfile       CreatorProfile?
+  aiTokensUsed         Int             @default(0)
+  aiAnalysisCount      Int             @default(0)
+  instagramAiAnalyses  InstagramAIAnalysis[]
+  creatorIntelligences CreatorIntelligence[]
+  creatorOpportunities CreatorOpportunity[]
+  hookLibraries        HookLibrary[]
 
   @@index([email])
 }
@@ -281,6 +287,67 @@ model CreatorProfile {
   completedAt       DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model InstagramAIAnalysis {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaId       String
+  caption       String?  @db.Text
+  mediaType     String
+  timestamp     DateTime
+  hook          String?
+  topic         String?
+  contentPillar String?
+  tone          String?
+  ctaType       String?
+  summary       String?  @db.Text
+  aiVersion     String?
+  analyzedAt    DateTime @default(now())
+
+  @@index([userId, mediaId])
+}
+
+model CreatorIntelligence {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  primaryNiche    String?
+  secondaryNiches Json?    // JSON array
+  toneOfVoice     String?
+  contentPillars  Json?    // JSON array
+  creatorStage    String?
+  postingStyle    String?
+  sourcePostCount Int      @default(0)
+  confidenceScore Float    @default(0)
+  generatedAt     DateTime @default(now())
+
+  @@index([userId])
+}
+
+model CreatorOpportunity {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  description String   @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model HookLibrary {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hookText      String
+  hookCategory  String
+  frequency     Int      @default(1)
+  examplePostId String?
+  createdAt     DateTime @default(now())
 
   @@index([userId])
 }

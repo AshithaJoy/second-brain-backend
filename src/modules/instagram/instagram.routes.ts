@@ -19,5 +19,7 @@ router.delete("/disconnect", InstagramController.disconnect);
 router.get("/status", InstagramController.getStatus);
 router.post("/sync", InstagramController.sync);
 router.get("/intelligence", InstagramController.getIntelligence);
-
+router.get("/hooks", InstagramController.getHooks);
+router.get("/opportunities", InstagramController.getOpportunities);
+router.post("/analyze", InstagramController.analyze);
 export default router;

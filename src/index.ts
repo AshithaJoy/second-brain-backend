@@ -164,6 +164,29 @@ app.use("/api/journal", journalRoutes);
 app.use("/api/instagram", instagramRoutes);
 app.use("/api/profile", profileRoutes);
 
+app.get("/api/railway-audit", async (req, res) => {
+  try {
+    const columns = await prisma.$queryRaw`
+      SELECT table_name, column_name 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name IN ('User', 'InstagramSnapshot', 'CreatorProfile', 'InstagramAIAnalysis', 'CreatorIntelligence', 'CreatorOpportunity', 'HookLibrary')
+    `;
+    
+    const migrations = await prisma.$queryRaw`
+      SELECT * FROM _prisma_migrations ORDER BY started_at DESC LIMIT 5
+    `.catch(() => []);
+
+    res.json({
+      DATABASE_URL: (process.env.DATABASE_URL || "").replace(/:[^:@]*@/, ':***@'),
+      NODE_ENV: process.env.NODE_ENV,
+      schema: { columns, migrations }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 // Global Error Handler
 app.use(errorHandler);
 
