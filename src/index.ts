@@ -217,6 +217,12 @@ app.get("/api/railway-data", async (req, res) => {
     }
 
     res.json({
+      env: {
+        ALLOW_INSTAGRAM_MOCKS: process.env.ALLOW_INSTAGRAM_MOCKS,
+        META_CLIENT_ID: process.env.META_CLIENT_ID ? 'Exists' : 'Missing',
+        META_CLIENT_SECRET: process.env.META_CLIENT_SECRET ? 'Exists' : 'Missing',
+        META_REDIRECT_URI: process.env.META_REDIRECT_URI
+      },
       user: {
         id: user.id,
         email: user.email,
