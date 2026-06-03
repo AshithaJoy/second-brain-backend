@@ -200,7 +200,11 @@ app.get("/api/railway-data", async (req, res) => {
         instagramConnectedAt: true,
         instagramSnapshots: {
           orderBy: { createdAt: 'desc' },
-          select: { id: true, createdAt: true, profileJson: true, mediaJson: true, instagramAiAnalyses: true }
+          select: { id: true, createdAt: true, profileJson: true, mediaJson: true }
+        },
+        instagramAiAnalyses: {
+          orderBy: { createdAt: 'desc' },
+          take: 3
         },
         creatorIntelligences: true,
         creatorOpportunities: { orderBy: { createdAt: 'desc' }, take: 10 },
@@ -225,10 +229,9 @@ app.get("/api/railway-data", async (req, res) => {
         createdAt: s.createdAt,
         profileJsonSize: s.profileJson ? JSON.stringify(s.profileJson).length : 0,
         mediaJsonSize: s.mediaJson ? JSON.stringify(s.mediaJson).length : 0,
-        mediaItemCount: s.mediaJson ? (s.mediaJson as any[]).length : 0,
-        aiAnalysisCount: s.instagramAiAnalyses.length,
-        aiAnalysisTop3: s.instagramAiAnalyses.slice(0, 3)
+        mediaItemCount: s.mediaJson ? (s.mediaJson as any[]).length : 0
       })),
+      aiAnalyses: user.instagramAiAnalyses,
       creatorIntelligence: user.creatorIntelligences,
       opportunities: user.creatorOpportunities,
       hooks: user.hookLibraries
