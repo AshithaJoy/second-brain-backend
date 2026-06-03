@@ -203,7 +203,7 @@ app.get("/api/railway-data", async (req, res) => {
           select: { id: true, createdAt: true, profileJson: true, mediaJson: true }
         },
         instagramAiAnalyses: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { analyzedAt: 'desc' },
           take: 3
         },
         creatorIntelligences: true,
