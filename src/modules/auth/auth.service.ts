@@ -2,7 +2,7 @@ import { hashPassword, verifyPassword } from "../../utils/hash";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../../utils/jwt";
 import { AuthRepository } from "./auth.repository";
 import { AuthTokens, UserPayload } from "./auth.types";
-
+import { prisma } from "../../config/db";
 export class AuthService {
   static async register(email: string, password: string): Promise<UserPayload> {
     const existing = await AuthRepository.findByEmail(email);
@@ -13,7 +13,27 @@ export class AuthService {
     }
 
     const hashed = await hashPassword(password);
-    const user = await AuthRepository.createUser(email, hashed);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: hashed,
+        creatorProfile: {
+          create: {
+            primaryNiche: "",
+            secondaryNiches: JSON.stringify([]),
+            primaryGoal: "",
+            audienceSize: "",
+            creatorStage: "",
+            postingFrequency: "",
+            preferredFormats: JSON.stringify([]),
+            contentPillars: JSON.stringify([]),
+            toneOfVoice: "",
+            biggestChallenge: "",
+            aiAssistanceLevel: "",
+          },
+        },
+      },
+    });
     return {
       id: user.id,
       email: user.email,

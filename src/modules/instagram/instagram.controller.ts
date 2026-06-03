@@ -215,11 +215,22 @@ export class InstagramController {
 
       const clientId = process.env.META_CLIENT_ID;
       const redirectUri = process.env.META_REDIRECT_URI;
+      console.log("Instagram OAuth Start", {
+        META_CLIENT_ID: process.env.META_CLIENT_ID,
+        META_REDIRECT_URI: process.env.META_REDIRECT_URI,
+        state
+      });
       const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || "http://localhost:5173";
 
       if (clientId && redirectUri) {
-        const authorizeUrl = `https://www.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_graph_user_profile,instagram_graph_user_media&response_type=code&state=${state}`;
+        const authorizeUrl = `https://www.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_business_basic,instagram_business_manage_insights&response_type=code&state=${state}`;
         console.log("[Instagram StartOAuth] Generated URL:", authorizeUrl);
+        console.log("[Instagram OAuth Debug]", {
+          clientId,
+          redirectUri,
+          authorizeUrl,
+          state
+        });
         return res.status(200).json({ url: authorizeUrl });
       } else {
         // Fallback Mock Mode: Redirect back with mock connected params and verified state

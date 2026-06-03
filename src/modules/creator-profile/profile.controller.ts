@@ -11,7 +11,25 @@ export class ProfileController {
       });
 
       if (!profile) {
-        return res.status(404).json({ error: "Creator profile not found" });
+        // Auto-create default profile for authenticated user
+        const createdProfile = await prisma.creatorProfile.create({
+          data: {
+            userId,
+            primaryNiche: "",
+            secondaryNiches: JSON.stringify([]),
+            primaryGoal: "",
+            audienceSize: "",
+            creatorStage: "",
+            postingFrequency: "",
+            preferredFormats: JSON.stringify([]),
+            contentPillars: JSON.stringify([]),
+            toneOfVoice: "",
+            biggestChallenge: "",
+            aiAssistanceLevel: "",
+          },
+        });
+        console.log(`Recovered missing CreatorProfile for user ${userId}`);
+        return res.status(200).json(createdProfile);
       }
 
       return res.status(200).json(profile);
