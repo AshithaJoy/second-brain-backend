@@ -235,7 +235,7 @@ app.get("/api/railway-data", async (req, res) => {
         createdAt: s.createdAt,
         profileJsonSize: s.profileJson ? JSON.stringify(s.profileJson).length : 0,
         mediaJsonSize: s.mediaJson ? JSON.stringify(s.mediaJson).length : 0,
-        mediaItemCount: s.mediaJson ? (s.mediaJson as any[]).length : 0
+        mediaItemCount: s.mediaJson ? (s.mediaJson as unknown as any[]).length : 0
       })),
       aiAnalyses: user.instagramAiAnalyses,
       creatorIntelligence: user.creatorIntelligences,
