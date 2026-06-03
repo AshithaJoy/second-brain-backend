@@ -106,3 +106,35 @@ While the app is in Development mode:
 - Configured `META_REDIRECT_URI` correctly in Railway.
 - Adjusted the URL generation logic in `instagram.controller.ts` to request business scopes and enforce `enable_fb_login=0`.
 - Reverted `META_CLIENT_ID` in Railway to the proper Instagram App ID.
+
+## 11. Runtime Diagnostics
+Document these endpoints and logs to shorten debugging significantly:
+*   **Endpoint:** `GET /api/instagram/oauth/diagnostics` (Returns active environment variables configured in production).
+*   **Railway Logs:** Search for the following prefixes to trace the OAuth flow:
+    *   `[Instagram OAuth Debug]` (Outputs URL generation state)
+    *   `[Instagram StartOAuth]` (Outputs exact generated `authorizeUrl`)
+    *   `[Auth Diagnostics]` (Outputs JWT validation and header checks)
+
+## 12. Known Working OAuth URL Template
+```text
+https://www.instagram.com/oauth/authorize
+?enable_fb_login=0
+&force_authentication=1
+&client_id=1016654697547047
+&redirect_uri=https://second-brain-backend-production-43b4.up.railway.app/api/instagram/oauth/callback
+&scope=instagram_business_basic,instagram_business_manage_insights
+&response_type=code
+&state=<random>
+```
+
+## 13. 15-Minute Recovery Procedure
+1. Check `META_CLIENT_ID` in Railway.
+2. Check `META_REDIRECT_URI` in Railway.
+3. Verify OAuth Redirect URI matches exactly in the Meta Dashboard.
+4. Verify Instagram Tester acceptance (if in Development Mode).
+5. Call `/api/instagram/oauth/diagnostics` to verify runtime env vars.
+6. Trigger "Connect Instagram" from the frontend.
+7. Inspect the generated `authorizeUrl` in the browser or Railway logs.
+8. Confirm `client_id` in the URL matches the **Instagram App ID**.
+9. Complete the OAuth flow on the Instagram login screen.
+10. Run Sync & Analyze to confirm token validity.
