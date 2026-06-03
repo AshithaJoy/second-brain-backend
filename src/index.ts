@@ -253,3 +253,14 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`[Server] Second Brain Backend running on port ${PORT}`);
 });
+
+app.get('/api/railway-audit-2', async (req, res) => {
+  try {
+    const userCols = await prisma.(SELECT column_name FROM information_schema.columns WHERE table_name = \'User\' ORDER BY column_name);
+    const tables = await prisma.(SELECT table_name FROM information_schema.tables WHERE table_schema = \'public\' ORDER BY table_name);
+    const migrations = await prisma.(SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at DESC);
+    res.json({ userCols, tables, migrations });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
