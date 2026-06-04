@@ -1,0 +1,34 @@
+{
+  "user": {
+    "id": "b103a46f-b0a1-4e4c-b455-149882f2022b",
+    "email": "ig_user_1780314729832@example.com",
+    "passwordHash": "$2b$10$JlsXHbRAl5p53XBy9ua1yujs8jyNacr4Rfagn7HPNtYla3Flp2AG6",
+    "role": "USER",
+    "credits": 5,
+    "createdAt": "2026-06-01T11:52:10.764Z",
+    "updatedAt": "2026-06-02T11:45:32.567Z",
+    "instagramUserId": null,
+    "instagramUsername": null,
+    "instagramAccessToken": null,
+    "instagramConnectedAt": null,
+    "instagramTokenExpiresAt": null,
+    "instagramTokenType": null,
+    "instagramOAuthState": null,
+    "aiTokensUsed": 0,
+    "aiAnalysisCount": 0
+  },
+  "snapshots": [
+    {
+      "id": "cc4dfc5b-972e-4f3d-8861-37b9f8142f10",
+      "userId": "b103a46f-b0a1-4e4c-b455-149882f2022b",
+      "profileJson": "{\"id\":\"17841405309208365\",\"username\":\"test_creator\",\"media_count\":12}",
+      "mediaJson": "[{\"id\":\"17895691234567890\",\"caption\":\"Mindful workspace aesthetic.\",\"media_type\":\"IMAGE\",\"media_url\":\"https://images.unsplash.com/photo-1507238691740-187a5b1d37b8\",\"permalink\":\"https://instagram.com/p/mock1\",\"like_count\":1420,\"comments_count\":56,\"timestamp\":\"2026-06-01T11:52:15.610Z\"},{\"id\":\"17895691234567891\",\"caption\":\"Planning my next reel slots.\",\"media_type\":\"VIDEO\",\"media_url\":\"https://images.unsplash.com/photo-1531297484001-80022131f5a1\",\"permalink\":\"https://instagram.com/p/mock2\",\"like_count\":850,\"comments_count\":24,\"timestamp\":\"2026-06-01T11:52:15.610Z\"}]",
+      "analyticsJson": "{\"postingCadence\":{\"postsPerWeek\":14,\"postsPerMonth\":60.8,\"averageGapBetweenPosts\":0},\"contentDistribution\":{\"reelsPercentage\":50,\"carouselPercentage\":0,\"imagePercentage\":50,\"videoPercentage\":50},\"consistencyScore\":95,\"hookAnalysis\":{\"strongestHooks\":[{\"id\":\"17895691234567890\",\"hook\":\"Mindful workspace aesthetic.\",\"engagement\":1476,\"permalink\":\"https://instagram.com/p/mock1\"},{\"id\":\"17895691234567891\",\"hook\":\"Planning my next reel slots.\",\"engagement\":874,\"permalink\":\"https://instagram.com/p/mock2\"}],\"weakestHooks\":[{\"id\":\"17895691234567891\",\"hook\":\"Planning my next reel slots.\",\"engagement\":874,\"permalink\":\"https://instagram.com/p/mock2\"},{\"id\":\"17895691234567890\",\"hook\":\"Mindful workspace aesthetic.\",\"engagement\":1476,\"permalink\":\"https://instagram.com/p/mock1\"}],\"recurringPatterns\":[\"aesthetic visual openings\"]},\"contentPillars\":{\"productivity\":67,\"business\":25,\"lifestyle\":33,\"personal\":25},\"opportunities\":[\"No carousels posted recently. Add multi-slide Carousels to share actionable guides and boost saves.\"],\"creatorHealthScore\":92}",
+      "createdAt": "2026-06-01T11:52:15.614Z"
+    }
+  ],
+  "analysis": [],
+  "intel": [],
+  "opps": [],
+  "hooks": []
+}

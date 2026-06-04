@@ -197,6 +197,11 @@ model BRoll {
   energy       String   @default("soft")
   notes        String?
   fileUrl      String?
+  status       AssetStatus @default(DRAFT)
+  duration     Int?
+  fileSize     Int?
+  resolution   String?
+  mimeType     String?
   thumbnailUrl String?
   favorite     Boolean  @default(false)
   userId       String
@@ -335,6 +340,15 @@ enum PostType {
   CAROUSEL
   STORY
   NOTE
+}
+
+enum AssetStatus {
+  DRAFT
+  READY
+  ATTACHED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
 }
 
 enum PostStatus {

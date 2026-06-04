@@ -49,7 +49,7 @@ export class PlannerRepository {
       throw err;
     }
     
-    return prisma.post.update({
+    const updatedPost = await prisma.post.update({
       where: { id },
       data: {
         title: data.title,
@@ -68,6 +68,21 @@ export class PlannerRepository {
       },
       include: { shoot: true, brolls: true },
     });
+
+    // Asset Lifecycle Automation
+    if (updatedPost.brolls && updatedPost.brolls.length > 0) {
+      let newAssetStatus = "ATTACHED";
+      if (updatedPost.status === "SCHEDULED") newAssetStatus = "SCHEDULED";
+      if (updatedPost.status === "PUBLISHED") newAssetStatus = "PUBLISHED";
+      if (updatedPost.status === "ARCHIVED") newAssetStatus = "ARCHIVED";
+
+      await prisma.bRoll.updateMany({
+        where: { id: { in: updatedPost.brolls.map(b => b.id) } },
+        data: { status: newAssetStatus as any }
+      });
+    }
+
+    return updatedPost;
   }
 
   static async delete(id: string, userId: string) {

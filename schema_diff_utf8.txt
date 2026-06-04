@@ -1,0 +1,480 @@
+﻿diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index 70a93ba..b231765 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -1,79 +1,44 @@
+-datasource db {
+-  provider = "postgresql"
+-  url      = env("DATABASE_URL")
+-}
+-
+ generator client {
+   provider = "prisma-client-js"
+ }
+ 
+-enum Role {
+-  USER
+-  ADMIN
+-}
+-
+-enum PostType {
+-  REEL
+-  CAROUSEL
+-  STORY
+-  NOTE
+-}
+-
+-enum PostStatus {
+-  DRAFT
+-  SCHEDULED
+-  POSTED
+-  ARCHIVED
+-}
+-
+-enum CollabStatus {
+-  DREAM_BRAND  @map("dream brand")
+-  REACHED_OUT  @map("reached out")
+-  REPLIED      @map("replied")
+-  DISCUSSING   @map("discussing")
+-  BOOKED       @map("booked")
+-  COMPLETED    @map("completed")
+-  GHOSTED      @map("ghosted 😭")
+-}
+-
+-enum PaymentStatus {
+-  UNPAID
+-  INVOICE_SENT @map("invoice sent")
+-  PAID
++datasource db {
++  provider = "postgresql"
++  url      = env("DATABASE_URL")
+ }
+ 
+ model User {
+-  id             String          @id @default(uuid())
+-  email          String          @unique
+-  passwordHash   String
+-  role           Role            @default(USER)
+-  credits        Int             @default(5)
+-  createdAt      DateTime        @default(now())
+-  updatedAt      DateTime        @updatedAt
+-  posts          Post[]
+-  dumps          Dump[]
+-  shoots         Shoot[]
+-  collabs        Collab[]
+-  reelBreakdowns ReelBreakdown[]
+-  aiJobs         AIJob[]
+-  notifications  Notification[]
+-  brolls         BRoll[]
+-  journalEntries JournalEntry[]
++  id                      String                @id @default(uuid())
++  email                   String                @unique
++  passwordHash            String
++  role                    Role                  @default(USER)
++  credits                 Int                   @default(5)
++  createdAt               DateTime              @default(now())
++  updatedAt               DateTime              @updatedAt
++  instagramAccessToken    String?
++  instagramConnectedAt    DateTime?
+   instagramUserId         String?
+   instagramUsername       String?
+-  instagramAccessToken    String?         @db.Text
+-  instagramConnectedAt    DateTime?
++  instagramOAuthState     String?
+   instagramTokenExpiresAt DateTime?
+   instagramTokenType      String?
+-  instagramOAuthState     String?
+-  instagramSnapshots   InstagramSnapshot[]
+-  creatorProfile       CreatorProfile?
+-  aiTokensUsed         Int             @default(0)
+-  aiAnalysisCount      Int             @default(0)
+-  instagramAiAnalyses  InstagramAIAnalysis[]
+-  creatorIntelligences CreatorIntelligence[]
+-  creatorOpportunities CreatorOpportunity[]
+-  hookLibraries        HookLibrary[]
++  aiAnalysisCount         Int                   @default(0)
++  aiTokensUsed            Int                   @default(0)
++  aiJobs                  AIJob[]
++  brolls                  BRoll[]
++  collabs                 Collab[]
++  creatorIntelligences    CreatorIntelligence[]
++  creatorOpportunities    CreatorOpportunity[]
++  creatorProfile          CreatorProfile?
++  dumps                   Dump[]
++  hookLibraries           HookLibrary[]
++  instagramAiAnalyses     InstagramAIAnalysis[]
++  instagramSnapshots      InstagramSnapshot[]
++  journalEntries          JournalEntry[]
++  notifications           Notification[]
++  posts                   Post[]
++  reelBreakdowns          ReelBreakdown[]
++  shoots                  Shoot[]
+ 
+   @@index([email])
+ }
+@@ -81,19 +46,19 @@ model User {
+ model Post {
+   id        String     @id @default(uuid())
+   title     String
+-  date      String     // YYYY-MM-DD
++  date      String
+   type      PostType   @default(REEL)
+   status    PostStatus @default(DRAFT)
+   mood      String
+-  caption   String?    @db.Text
+-  hashtags  String?    @db.Text
+-  notes     String?    @db.Text
++  caption   String?
++  hashtags  String?
++  notes     String?
+   shootId   String?    @unique
+-  shoot     Shoot?     @relation(fields: [shootId], references: [id], onDelete: SetNull)
+   userId    String
+-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+   createdAt DateTime   @default(now())
+   updatedAt DateTime   @updatedAt
++  shoot     Shoot?     @relation(fields: [shootId], references: [id])
++  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId, date])
+ }
+@@ -101,14 +66,14 @@ model Post {
+ model Dump {
+   id        String   @id @default(uuid())
+   title     String
+-  text      String   @db.Text
++  text      String
+   mood      String
+-  ts        String   // modified time description (e.g., "2h ago", "yesterday")
++  ts        String
+   archived  Boolean  @default(false)
+   userId    String
+-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
++  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId, archived])
+ }
+@@ -116,14 +81,14 @@ model Dump {
+ model Shoot {
+   id        String   @id @default(uuid())
+   name      String
+-  shootDate String   // YYYY-MM-DD
+-  slotsJson String   @db.Text // JSON-serialized slot structure (morning, afternoon, evening)
++  shootDate String
++  slotsJson String
+   postId    String?  @unique
+-  post      Post?
+   userId    String
+-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
++  post      Post?
++  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId, shootDate])
+ }
+@@ -139,19 +104,19 @@ model Collab {
+   negotiatedAmount Int           @default(0)
+   dueDate          String?
+   paymentStatus    PaymentStatus @default(UNPAID)
+-  notes            String?       @db.Text
+-  pitchDraft       String?       @db.Text
+-  followUpDraft    String?       @db.Text
+-  scriptText       String?       @db.Text
++  notes            String?
++  pitchDraft       String?
++  followUpDraft    String?
++  scriptText       String?
+   wardrobe         String?
+   props            String?
+   briefFileName    String?
+   briefFileUrl     String?
+   userId           String
+-  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+-  deliverables     Deliverable[]
+   createdAt        DateTime      @default(now())
+   updatedAt        DateTime      @updatedAt
++  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
++  deliverables     Deliverable[]
+ 
+   @@index([userId, status])
+ }
+@@ -159,14 +124,14 @@ model Collab {
+ model Deliverable {
+   id        String   @id @default(uuid())
+   text      String
+-  type      String   // reel, story, carousel, photo, custom
++  type      String
+   postId    String?
+   shootId   String?
+   completed Boolean  @default(false)
+   collabId  String
+-  collab    Collab   @relation(fields: [collabId], references: [id], onDelete: Cascade)
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
++  collab    Collab   @relation(fields: [collabId], references: [id], onDelete: Cascade)
+ 
+   @@index([collabId])
+ }
+@@ -174,25 +139,25 @@ model Deliverable {
+ model ReelBreakdown {
+   id           String   @id @default(uuid())
+   url          String
+-  insightsJson String   @db.Text // JSON array of insights
+-  stepsJson    String   @db.Text // JSON array of steps
++  insightsJson String
++  stepsJson    String
+   userId       String
+-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   createdAt    DateTime @default(now())
+   updatedAt    DateTime @updatedAt
++  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId, url])
+ }
+ 
+ model AIJob {
+   id         String   @id @default(uuid())
+-  queueName  String   // name of the queue (e.g. "analyze-reel", "rewrite-dump")
+-  status     String   // PENDING, COMPLETED, FAILED
+-  resultJson String?  @db.Text // JSON result string containing payload response
++  queueName  String
++  status     String
++  resultJson String?
+   userId     String
+-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   createdAt  DateTime @default(now())
+   updatedAt  DateTime @updatedAt
++  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId, status])
+ }
+@@ -202,8 +167,8 @@ model Notification {
+   text      String
+   read      Boolean  @default(false)
+   userId    String
+-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   createdAt DateTime @default(now())
++  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId, read])
+ }
+@@ -211,10 +176,10 @@ model Notification {
+ model BRoll {
+   id           String   @id @default(uuid())
+   title        String
+-  description  String   @db.Text
++  description  String
+   mood         String
+-  visualTags   String   @db.Text // JSON string representing array of strings
+-  emotionTags  String   @db.Text // JSON string representing array of strings
++  visualTags   String
++  emotionTags  String
+   location     String?
+   lighting     String?
+   motionType   String?
+@@ -224,35 +189,35 @@ model BRoll {
+   clipType     String   @default("video")
+   cinematicUse String?
+   energy       String   @default("soft")
+-  notes        String?  @db.Text
+-  fileUrl      String?  @db.Text
+-  thumbnailUrl String?  @db.Text
++  notes        String?
++  fileUrl      String?
++  thumbnailUrl String?
+   favorite     Boolean  @default(false)
+   userId       String
+-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   createdAt    DateTime @default(now())
+   updatedAt    DateTime @updatedAt
++  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId, mood])
+ }
+ 
+ model JournalEntry {
+-  id           String   @id @default(uuid())
+-  weekStart    String   // YYYY-MM-DD
+-  mood         String
+-  followers    Int      @default(0)
+-  posts        Int      @default(0)
+-  reach        Int      @default(0)
+-  saves        Int      @default(0)
+-  engagement   String   @default("0")
+-  reflection   String   @db.Text
+-  wins         String   @db.Text
+-  lessons      String   @db.Text
+-  notes        String?  @db.Text
+-  userId       String
+-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+-  createdAt    DateTime @default(now())
+-  updatedAt    DateTime @updatedAt
++  id         String   @id @default(uuid())
++  weekStart  String
++  mood       String
++  followers  Int      @default(0)
++  posts      Int      @default(0)
++  reach      Int      @default(0)
++  saves      Int      @default(0)
++  engagement String   @default("0")
++  reflection String
++  wins       String
++  lessons    String
++  notes      String?
++  userId     String
++  createdAt  DateTime @default(now())
++  updatedAt  DateTime @updatedAt
++  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId, weekStart])
+ }
+@@ -260,11 +225,11 @@ model JournalEntry {
+ model InstagramSnapshot {
+   id            String   @id @default(uuid())
+   userId        String
+-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+-  profileJson   String   @db.Text
+-  mediaJson     String   @db.Text
+-  analyticsJson String   @db.Text
++  profileJson   String
++  mediaJson     String
++  analyticsJson String
+   createdAt     DateTime @default(now())
++  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId])
+ }
+@@ -272,21 +237,21 @@ model InstagramSnapshot {
+ model CreatorProfile {
+   id                String    @id @default(uuid())
+   userId            String    @unique
+-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+   primaryNiche      String
+-  secondaryNiches   Json      // JSON array of strings
++  secondaryNiches   Json
+   primaryGoal       String
+   audienceSize      String
+   creatorStage      String
+   postingFrequency  String
+-  preferredFormats  Json      // JSON array of strings
+-  contentPillars    Json      // JSON array of strings
++  preferredFormats  Json
++  contentPillars    Json
+   toneOfVoice       String
+   biggestChallenge  String
+   aiAssistanceLevel String
+   completedAt       DateTime?
+   createdAt         DateTime  @default(now())
+   updatedAt         DateTime  @updatedAt
++  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId])
+ }
+@@ -294,9 +259,8 @@ model CreatorProfile {
+ model InstagramAIAnalysis {
+   id            String   @id @default(uuid())
+   userId        String
+-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   mediaId       String
+-  caption       String?  @db.Text
++  caption       String?
+   mediaType     String
+   timestamp     DateTime
+   hook          String?
+@@ -304,9 +268,10 @@ model InstagramAIAnalysis {
+   contentPillar String?
+   tone          String?
+   ctaType       String?
+-  summary       String?  @db.Text
++  summary       String?
+   aiVersion     String?
+   analyzedAt    DateTime @default(now())
++  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId, mediaId])
+ }
+@@ -314,16 +279,16 @@ model InstagramAIAnalysis {
+ model CreatorIntelligence {
+   id              String   @id @default(uuid())
+   userId          String
+-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   primaryNiche    String?
+-  secondaryNiches Json?    // JSON array
++  secondaryNiches Json?
+   toneOfVoice     String?
+-  contentPillars  Json?    // JSON array
++  contentPillars  Json?
+   creatorStage    String?
+   postingStyle    String?
+   sourcePostCount Int      @default(0)
+   confidenceScore Float    @default(0)
+   generatedAt     DateTime @default(now())
++  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId])
+ }
+@@ -331,10 +296,10 @@ model CreatorIntelligence {
+ model CreatorOpportunity {
+   id          String   @id @default(uuid())
+   userId      String
+-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   type        String
+-  description String   @db.Text
++  description String
+   createdAt   DateTime @default(now())
++  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId])
+ }
+@@ -342,12 +307,47 @@ model CreatorOpportunity {
+ model HookLibrary {
+   id            String   @id @default(uuid())
+   userId        String
+-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   hookText      String
+   hookCategory  String
+   frequency     Int      @default(1)
+   examplePostId String?
+   createdAt     DateTime @default(now())
++  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@index([userId])
+ }
++
++enum Role {
++  USER
++  ADMIN
++}
++
++enum PostType {
++  REEL
++  CAROUSEL
++  STORY
++  NOTE
++}
++
++enum PostStatus {
++  DRAFT
++  SCHEDULED
++  POSTED
++  ARCHIVED
++}
++
++enum CollabStatus {
++  DREAM_BRAND @map("dream brand")
++  REACHED_OUT @map("reached out")
++  REPLIED     @map("replied")
++  DISCUSSING  @map("discussing")
++  BOOKED      @map("booked")
++  COMPLETED   @map("completed")
++  GHOSTED     @map("ghosted 😭")
++}
++
++enum PaymentStatus {
++  UNPAID
++  INVOICE_SENT @map("invoice sent")
++  PAID
++}

@@ -157,6 +157,10 @@ export class PlannerService {
       throw Object.assign(new Error("Instagram access token has expired. Please reconnect."), { statusCode: 400 });
     }
 
+    if (!post.caption || post.caption.trim().length === 0) {
+      throw Object.assign(new Error("Caption must be added before scheduling."), { statusCode: 400 });
+    }
+
     const updatedPost = await prisma.post.update({
       where: { id },
       data: {
@@ -165,6 +169,13 @@ export class PlannerService {
         scheduledByUserId: userId
       }
     });
+
+    if (post.brolls && post.brolls.length > 0) {
+      await prisma.bRoll.updateMany({
+        where: { id: { in: post.brolls.map(b => b.id) } },
+        data: { status: "SCHEDULED" as any }
+      });
+    }
 
     const job = await prisma.publishingJob.create({
       data: {

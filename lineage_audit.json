@@ -1,0 +1,37 @@
+{
+  "A": {
+    "userId": "43c6840f-70d2-44f2-8182-ba824d28fe66",
+    "instagramUserId": null,
+    "instagramUsername": null,
+    "instagramConnectedAt": null
+  },
+  "B": {
+    "snapshotCount": 0,
+    "latestSnapshotTimestamp": null,
+    "mediaCountInsideLatestSnapshot": 0
+  },
+  "C": {
+    "totalSyncedMedia": "N/A (Stored in Snapshot)",
+    "latestMediaItem": "N/A",
+    "oldestMediaItem": "N/A"
+  },
+  "D": {
+    "analysisRecordCount": 0,
+    "analyzedPostCount": 0,
+    "analysisVersion": null
+  },
+  "E": {
+    "exists": false,
+    "generatedAt": null,
+    "confidenceScore": null,
+    "primaryNiche": null
+  },
+  "F": {
+    "opportunityCount": 0,
+    "latestGeneratedTimestamp": null
+  },
+  "G": {
+    "hookCount": 0,
+    "sampleHookEntries": []
+  }
+}

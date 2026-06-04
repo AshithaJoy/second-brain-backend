@@ -18,6 +18,11 @@ export const CreateBRollSchema = z.object({
   notes: z.string().optional().nullable(),
   fileUrl: z.string().optional().nullable(),
   thumbnailUrl: z.string().optional().nullable(),
+  status: z.enum(["DRAFT", "READY", "ATTACHED", "SCHEDULED", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
+  duration: z.number().int().optional().nullable(),
+  fileSize: z.number().int().optional().nullable(),
+  resolution: z.string().optional().nullable(),
+  mimeType: z.string().optional().nullable(),
   favorite: z.boolean().optional(),
 });
 
