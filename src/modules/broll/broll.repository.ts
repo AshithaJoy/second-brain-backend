@@ -47,6 +47,11 @@ export class BRollRepository {
         fileUrl: data.fileUrl,
         thumbnailUrl: data.thumbnailUrl,
         favorite: data.favorite ?? false,
+        status: data.status,
+        duration: data.duration,
+        fileSize: data.fileSize,
+        resolution: data.resolution,
+        mimeType: data.mimeType,
         userId,
       },
     });
@@ -86,6 +91,11 @@ export class BRollRepository {
     if (data.fileUrl !== undefined) updateData.fileUrl = data.fileUrl;
     if (data.thumbnailUrl !== undefined) updateData.thumbnailUrl = data.thumbnailUrl;
     if (data.favorite !== undefined) updateData.favorite = data.favorite;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.duration !== undefined) updateData.duration = data.duration;
+    if (data.fileSize !== undefined) updateData.fileSize = data.fileSize;
+    if (data.resolution !== undefined) updateData.resolution = data.resolution;
+    if (data.mimeType !== undefined) updateData.mimeType = data.mimeType;
 
     const record = await prisma.bRoll.update({
       where: { id },

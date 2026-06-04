@@ -17,6 +17,11 @@ export interface CreateBRollInput {
   fileUrl?: string | null;
   thumbnailUrl?: string | null;
   favorite?: boolean;
+  status?: "DRAFT" | "READY" | "ATTACHED" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED";
+  duration?: number | null;
+  fileSize?: number | null;
+  resolution?: string | null;
+  mimeType?: string | null;
 }
 
 export interface UpdateBRollInput {
@@ -38,4 +43,9 @@ export interface UpdateBRollInput {
   fileUrl?: string | null;
   thumbnailUrl?: string | null;
   favorite?: boolean;
+  status?: "DRAFT" | "READY" | "ATTACHED" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED";
+  duration?: number | null;
+  fileSize?: number | null;
+  resolution?: string | null;
+  mimeType?: string | null;
 }
