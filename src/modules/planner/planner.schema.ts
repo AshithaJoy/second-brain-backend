@@ -17,7 +17,10 @@ export const CreatePostSchema = z.object({
 export const UpdatePostSchema = CreatePostSchema.partial();
 
 export const PostIdSchema = z.object({
-  id: z.string().uuid(),
+  id: z.union([
+    z.string().uuid(),
+    z.string().regex(/^\d+$/)
+  ]),
 });
 
 export const GenerateHooksSchema = z.object({
