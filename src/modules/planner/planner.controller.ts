@@ -53,6 +53,16 @@ export class PlannerController {
     }
   }
 
+  static async schedulePost(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = PostIdSchema.parse({ id: req.params.id });
+      const post = await PlannerService.schedulePost(id, req.user!.id);
+      return res.status(200).json(post);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async generateHooks(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = PostIdSchema.parse({ id: req.params.id });
@@ -118,6 +128,26 @@ export class PlannerController {
       const { id } = ShootIdSchema.parse({ id: req.params.id });
       await PlannerService.deleteShoot(id, req.user!.id);
       return res.status(200).json({ message: "Shoot deleted successfully" });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getPublishingHistory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const history = await PlannerService.getPublishingHistory(req.user!.id);
+      return res.status(200).json(history);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async retryPublishingJob(req: Request, res: Response, next: NextFunction) {
+    try {
+      const jobId = req.params.jobId;
+      if (!jobId) throw Object.assign(new Error("Job ID required"), { statusCode: 400 });
+      const job = await PlannerService.retryPublishingJob(jobId, req.user!.id);
+      return res.status(200).json(job);
     } catch (err) {
       next(err);
     }

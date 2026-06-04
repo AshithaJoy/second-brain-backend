@@ -10,6 +10,8 @@ export const CreatePostSchema = z.object({
   caption: z.string().optional(),
   hashtags: z.string().optional(),
   shootId: z.string().uuid().optional().nullable(),
+  brollIds: z.array(z.string().uuid()).optional(),
+  publishAt: z.string().datetime().optional().nullable(),
 });
 
 export const UpdatePostSchema = CreatePostSchema.partial();

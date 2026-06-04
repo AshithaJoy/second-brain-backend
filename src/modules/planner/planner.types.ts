@@ -9,6 +9,7 @@ export interface CreatePostInput {
   caption?: string;
   hashtags?: string;
   shootId?: string | null;
+  brollIds?: string[];
 }
 
 export interface UpdatePostInput {
@@ -20,4 +21,5 @@ export interface UpdatePostInput {
   caption?: string;
   hashtags?: string;
   shootId?: string | null;
+  brollIds?: string[];
 }

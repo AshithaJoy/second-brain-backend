@@ -6,18 +6,18 @@ export class PlannerRepository {
     return prisma.post.findMany({
       where: { userId },
       orderBy: { date: "asc" },
-      include: { shoot: true },
+      include: { shoot: true, brolls: true },
     });
   }
 
   static async findById(id: string, userId: string) {
     return prisma.post.findFirst({
       where: { id, userId },
-      include: { shoot: true },
+      include: { shoot: true, brolls: true },
     });
   }
 
-  static async create(userId: string, data: CreatePostInput) {
+  static async create(userId: string, data: CreatePostInput & { brollIds?: string[] }) {
     return prisma.post.create({
       data: {
         title: data.title,
@@ -29,12 +29,17 @@ export class PlannerRepository {
         hashtags: data.hashtags,
         shootId: data.shootId,
         userId,
+        ...(data.brollIds && {
+          brolls: {
+            connect: data.brollIds.map(id => ({ id }))
+          }
+        })
       },
-      include: { shoot: true },
+      include: { shoot: true, brolls: true },
     });
   }
 
-  static async update(id: string, userId: string, data: UpdatePostInput) {
+  static async update(id: string, userId: string, data: UpdatePostInput & { brollIds?: string[] }) {
     const existing = await prisma.post.findFirst({
       where: { id, userId },
     });
@@ -43,7 +48,7 @@ export class PlannerRepository {
       err.statusCode = 404;
       throw err;
     }
-    // If shootId is provided as null/undefined, we might need special handling depending on Prisma
+    
     return prisma.post.update({
       where: { id },
       data: {
@@ -55,8 +60,13 @@ export class PlannerRepository {
         caption: data.caption,
         hashtags: data.hashtags,
         shootId: data.shootId === null ? null : data.shootId,
+        ...(data.brollIds && {
+          brolls: {
+            set: data.brollIds.map(bId => ({ id: bId }))
+          }
+        })
       },
-      include: { shoot: true },
+      include: { shoot: true, brolls: true },
     });
   }
 

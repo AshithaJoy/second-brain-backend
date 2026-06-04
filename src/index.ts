@@ -40,6 +40,14 @@ if (process.env.REDIS_ENABLED === "true") {
   import("./workers/reel-analysis.worker")
     .then(() => console.log("[Workers] Reel analysis worker loaded."))
     .catch((err) => console.error("[Workers] Failed to load Reel analysis worker:", err));
+
+  import("./workers/instagramPublish.worker")
+    .then(() => console.log("[Workers] Instagram publish worker loaded."))
+    .catch((err) => console.error("[Workers] Failed to load Instagram publish worker:", err));
+
+  import("./workers/recovery.cron").then((module) => {
+    module.startRecoveryCron();
+  });
 } else {
   console.log("[Workers] Redis is disabled. Background worker bootstrap skipped.");
 }
