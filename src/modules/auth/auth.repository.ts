@@ -8,7 +8,7 @@ export class AuthRepository {
   }
 
   static async findById(id: string) {
-    return prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -23,6 +23,12 @@ export class AuthRepository {
         instagramOAuthState: true,
       },
     });
+    if (!user) return null;
+    return {
+      ...user,
+      instagramConnectedAt: user.instagramConnectedAt ? user.instagramConnectedAt.toISOString() : null,
+      instagramConnected: !!user.instagramUserId && !!user.instagramUsername,
+    };
   }
 
   static async createUser(email: string, passwordHash: string) {

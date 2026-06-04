@@ -39,6 +39,10 @@ export class AuthService {
       email: user.email,
       role: user.role,
       credits: user.credits,
+      instagramUserId: null,
+      instagramUsername: null,
+      instagramConnectedAt: null,
+      instagramConnected: false,
     };
   }
 
@@ -57,25 +61,36 @@ export class AuthService {
       throw err;
     }
 
-    const payload: UserPayload = { id: user.id, email: user.email, role: user.role, credits: user.credits };
-    const accessToken = signAccessToken(payload);
-    const refreshToken = signRefreshToken(payload);
+    const tokenPayload = { id: user.id, email: user.email, role: user.role, credits: user.credits };
+    const accessToken = signAccessToken(tokenPayload);
+    const refreshToken = signRefreshToken(tokenPayload);
+
+    const userPayload: UserPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      credits: user.credits,
+      instagramUserId: user.instagramUserId,
+      instagramUsername: user.instagramUsername,
+      instagramConnectedAt: user.instagramConnectedAt ? user.instagramConnectedAt.toISOString() : null,
+      instagramConnected: !!user.instagramUserId && !!user.instagramUsername,
+    };
 
     return {
       accessToken,
       refreshToken,
-      user: payload,
+      user: userPayload,
     };
   }
 
   static async refresh(token: string): Promise<AuthTokens> {
     try {
       const payload = verifyRefreshToken(token);
-      const userPayload: UserPayload = { id: payload.id, email: payload.email, role: payload.role, credits: payload.credits };
+      const jwtPayload = { id: payload.id, email: payload.email, role: payload.role, credits: payload.credits };
 
       return {
-        accessToken: signAccessToken(userPayload),
-        refreshToken: signRefreshToken(userPayload),
+        accessToken: signAccessToken(jwtPayload),
+        refreshToken: signRefreshToken(jwtPayload),
       };
     } catch (err) {
       const error: any = new Error("Invalid refresh token");
@@ -112,9 +127,20 @@ export class AuthService {
         user = await AuthRepository.createUser(email, hashed);
       }
 
-      const userPayload: UserPayload = { id: user.id, email: user.email, role: user.role, credits: user.credits };
-      const accessToken = signAccessToken(userPayload);
-      const refreshToken = signRefreshToken(userPayload);
+      const tokenPayload = { id: user.id, email: user.email, role: user.role, credits: user.credits };
+      const accessToken = signAccessToken(tokenPayload);
+      const refreshToken = signRefreshToken(tokenPayload);
+
+      const userPayload: UserPayload = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        credits: user.credits,
+        instagramUserId: user.instagramUserId,
+        instagramUsername: user.instagramUsername,
+        instagramConnectedAt: user.instagramConnectedAt ? user.instagramConnectedAt.toISOString() : null,
+        instagramConnected: !!user.instagramUserId && !!user.instagramUsername,
+      };
 
       return {
         accessToken,
