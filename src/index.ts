@@ -188,7 +188,7 @@ app.get("/api/railway-audit", async (req, res) => {
 
     const postId = req.query.postId as string;
     let post = null;
-    let jobs = [];
+    let jobs: any[] = [];
     if (postId) {
       post = await prisma.post.findUnique({
         where: { id: postId },
