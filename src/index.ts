@@ -260,7 +260,14 @@ app.get('/api/railway-audit-2', async (req, res) => {
     const userCols = await prisma.$queryRawUnsafe(`SELECT column_name FROM information_schema.columns WHERE table_name = 'User' ORDER BY column_name`);
     const tables = await prisma.$queryRawUnsafe(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`);
     const migrations = await prisma.$queryRawUnsafe(`SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at DESC`);
-    res.json({ userCols, tables, migrations });
+    const enums = await prisma.$queryRawUnsafe(`
+      SELECT enumlabel
+      FROM pg_enum
+      JOIN pg_type ON pg_enum.enumtypid = pg_type.oid
+      WHERE pg_type.typname = 'PostStatus'
+      ORDER BY enumsortorder
+    `);
+    res.json({ userCols, tables, migrations, enums });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
