@@ -161,7 +161,7 @@ app.get("/health", async (req, res) => {
 });
 
 // Map routes
-app.get("/api/planner/debug-post/:id", async (req, res) => {
+app.get("/api/debug-post/:id", async (req, res) => {
   try {
     const post = await prisma.post.findUnique({
       where: { id: req.params.id },
