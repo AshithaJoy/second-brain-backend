@@ -161,6 +161,21 @@ app.get("/health", async (req, res) => {
 });
 
 // Map routes
+app.get("/api/planner/debug-post/:id", async (req, res) => {
+  try {
+    const post = await prisma.post.findUnique({
+      where: { id: req.params.id },
+      include: { brolls: true }
+    });
+    const jobs = await prisma.publishingJob.findMany({
+      where: { postId: req.params.id }
+    });
+    return res.status(200).json({ post, jobs });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/planner", plannerRoutes);
 app.use("/api/brain", brainRoutes);
