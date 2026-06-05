@@ -161,20 +161,6 @@ app.get("/health", async (req, res) => {
 });
 
 // Map routes
-app.get("/api/debug-post/:id", async (req, res) => {
-  try {
-    const post = await prisma.post.findUnique({
-      where: { id: req.params.id },
-      include: { brolls: true }
-    });
-    const jobs = await prisma.publishingJob.findMany({
-      where: { postId: req.params.id }
-    });
-    return res.status(200).json({ post, jobs });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
-  }
-});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/planner", plannerRoutes);
@@ -200,10 +186,24 @@ app.get("/api/railway-audit", async (req, res) => {
       SELECT * FROM _prisma_migrations ORDER BY started_at DESC LIMIT 5
     `.catch(() => []);
 
+    const postId = req.query.postId as string;
+    let post = null;
+    let jobs = [];
+    if (postId) {
+      post = await prisma.post.findUnique({
+        where: { id: postId },
+        include: { brolls: true }
+      });
+      jobs = await prisma.publishingJob.findMany({
+        where: { postId }
+      });
+    }
+
     res.json({
       DATABASE_URL: (process.env.DATABASE_URL || "").replace(/:[^:@]*@/, ':***@'),
       NODE_ENV: process.env.NODE_ENV,
-      schema: { columns, migrations }
+      schema: { columns, migrations },
+      debug: { post, jobs }
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message, stack: err.stack });
