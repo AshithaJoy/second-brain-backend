@@ -6,6 +6,11 @@ export class InstagramPublishingService {
    * Assumes the user token has the `instagram_business_content_publish` scope.
    */
   static async publishMedia(userId: string, accessToken: string, imageUrl: string, caption: string): Promise<string> {
+    if (process.env.PREVENT_REAL_PUBLISH === "true" || process.env.NODE_ENV === "test" || accessToken === "mock_token") {
+      console.log("[InstagramPublishingService] SAFEGUARD ACTIVE: Bypassing real Instagram publish and returning mock media ID.");
+      return "mock_ig_media_" + Math.random().toString(36).substr(2, 9);
+    }
+
     try {
       // Step 1: Create Media Container
       const createUrl = `https://graph.instagram.com/v19.0/${userId}/media?image_url=${encodeURIComponent(

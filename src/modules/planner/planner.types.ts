@@ -8,8 +8,10 @@ export interface CreatePostInput {
   mood: string;
   caption?: string;
   hashtags?: string;
+  notes?: string | null;
   shootId?: string | null;
   brollIds?: string[];
+  publishAt?: string | null;
 }
 
 export interface UpdatePostInput {
@@ -20,6 +22,8 @@ export interface UpdatePostInput {
   mood?: string;
   caption?: string;
   hashtags?: string;
+  notes?: string | null;
   shootId?: string | null;
   brollIds?: string[];
+  publishAt?: string | null;
 }

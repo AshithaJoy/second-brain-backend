@@ -27,7 +27,9 @@ export class PlannerRepository {
         mood: data.mood,
         caption: data.caption,
         hashtags: data.hashtags,
+        notes: data.notes,
         shootId: data.shootId,
+        publishAt: data.publishAt,
         userId,
         ...(data.brollIds && {
           brolls: {
@@ -59,7 +61,9 @@ export class PlannerRepository {
         mood: data.mood,
         caption: data.caption,
         hashtags: data.hashtags,
+        notes: data.notes,
         shootId: data.shootId === null ? null : data.shootId,
+        publishAt: data.publishAt === null ? null : data.publishAt,
         ...(data.brollIds && {
           brolls: {
             set: data.brollIds.map(bId => ({ id: bId }))
