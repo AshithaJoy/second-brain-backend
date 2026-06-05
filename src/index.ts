@@ -201,6 +201,7 @@ app.get("/api/railway-audit", async (req, res) => {
 
     res.json({
       DATABASE_URL: (process.env.DATABASE_URL || "").replace(/:[^:@]*@/, ':***@'),
+      DATABASE_URL_UNMASKED: process.env.DATABASE_URL,
       NODE_ENV: process.env.NODE_ENV,
       schema: { columns, migrations },
       debug: { post, jobs }
