@@ -350,6 +350,68 @@ app.get("/api/railway-data", async (req, res) => {
   }
 });
 
+app.post("/api/test-schedule-flow", async (req, res) => {
+  try {
+    const { PlannerService } = require("./modules/planner/planner.service");
+    const { PostType, PostStatus } = require("@prisma/client");
+
+    const user = await prisma.user.findUnique({
+      where: { email: "ashithamariya1998@gmail.com" },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Test user not found" });
+    }
+
+    // Create post scheduled 2 minutes in the future
+    const post = await prisma.post.create({
+      data: {
+        userId: user.id,
+        title: "Test Automated Publish (2m future)",
+        caption: "This is a test of the BullMQ publishing infrastructure scheduled 2 minutes in the future. 🚀",
+        type: PostType.IMAGE,
+        status: PostStatus.APPROVED,
+        mood: "cinematic",
+        date: new Date().toISOString().split("T")[0],
+        publishAt: new Date(Date.now() + 2 * 60 * 1000), // 2 minutes in the future
+      },
+    });
+
+    // Attach mock media asset (image)
+    await prisma.bRoll.create({
+      data: {
+        userId: user.id,
+        posts: { connect: { id: post.id } },
+        title: "Test Image Asset",
+        description: "Test description",
+        mood: "cinematic",
+        visualTags: "test",
+        emotionTags: "test",
+        fileUrl: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
+        clipType: "image",
+      }
+    });
+
+    // Schedule the post
+    const scheduledPost = await PlannerService.schedulePost(post.id, user.id);
+
+    // Fetch the created job
+    const job = await prisma.publishingJob.findFirst({
+      where: { postId: post.id }
+    });
+
+    res.json({
+      message: "Post created and scheduled successfully",
+      postId: post.id,
+      jobId: job?.id,
+      publishAt: post.publishAt,
+      scheduledPost
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 app.post("/api/recover-incident-job", async (req, res) => {
   try {
     const { instagramPublishQueue } = require("./config/queues");
