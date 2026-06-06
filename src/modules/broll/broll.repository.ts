@@ -1,6 +1,41 @@
 import { prisma } from "../../config/db";
 import { CreateBRollInput, UpdateBRollInput } from "./broll.types";
 
+/**
+ * Safely parses a JSON-encoded string array from the database.
+ *
+ * The visualTags / emotionTags columns are stored as serialised JSON arrays
+ * (e.g. `'["cinematic","soft"]'`).  Historically some records were written
+ * with bare, non-JSON values (e.g. `"test"`).  This helper ensures that no
+ * malformed record can ever crash the endpoint:
+ *
+ *   - null / undefined / empty string  → []
+ *   - valid JSON array                 → array (elements coerced to string)
+ *   - valid JSON non-array scalar      → wrapped in a single-element array
+ *   - any other (un-parseable) string  → wrapped in a single-element array
+ *                                        (the raw value is preserved so data
+ *                                        is never silently discarded)
+ */
+function safeParseJsonArray(value: string | null | undefined): string[] {
+  if (!value || value.trim() === "") return [];
+
+  try {
+    const parsed = JSON.parse(value);
+
+    if (Array.isArray(parsed)) {
+      return parsed.map(String);
+    }
+
+    return [String(parsed)];
+  } catch {
+    console.warn(
+      `[BRollRepository] Invalid tag payload: ${value}`
+    );
+
+    return [value.trim()];
+  }
+}
+
 export class BRollRepository {
   static async findMany(userId: string) {
     const records = await prisma.bRoll.findMany({
@@ -9,8 +44,8 @@ export class BRollRepository {
     });
     return records.map(r => ({
       ...r,
-      visualTags: JSON.parse(r.visualTags || "[]") as string[],
-      emotionTags: JSON.parse(r.emotionTags || "[]") as string[],
+      visualTags: safeParseJsonArray(r.visualTags),
+      emotionTags: safeParseJsonArray(r.emotionTags),
     }));
   }
 
@@ -21,8 +56,8 @@ export class BRollRepository {
     if (!record) return null;
     return {
       ...record,
-      visualTags: JSON.parse(record.visualTags || "[]") as string[],
-      emotionTags: JSON.parse(record.emotionTags || "[]") as string[],
+      visualTags: safeParseJsonArray(record.visualTags),
+      emotionTags: safeParseJsonArray(record.emotionTags),
     };
   }
 
@@ -57,8 +92,8 @@ export class BRollRepository {
     });
     return {
       ...record,
-      visualTags: JSON.parse(record.visualTags || "[]") as string[],
-      emotionTags: JSON.parse(record.emotionTags || "[]") as string[],
+      visualTags: safeParseJsonArray(record.visualTags),
+      emotionTags: safeParseJsonArray(record.emotionTags),
     };
   }
 
@@ -104,8 +139,8 @@ export class BRollRepository {
 
     return {
       ...record,
-      visualTags: JSON.parse(record.visualTags || "[]") as string[],
-      emotionTags: JSON.parse(record.emotionTags || "[]") as string[],
+      visualTags: safeParseJsonArray(record.visualTags),
+      emotionTags: safeParseJsonArray(record.emotionTags),
     };
   }
 

@@ -385,8 +385,8 @@ app.post("/api/test-schedule-flow", async (req, res) => {
         title: "Test Image Asset",
         description: "Test description",
         mood: "cinematic",
-        visualTags: "test",
-        emotionTags: "test",
+        visualTags: JSON.stringify(["test"]),
+        emotionTags: JSON.stringify(["test"]),
         fileUrl: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
         clipType: "image",
       }
