@@ -369,6 +369,7 @@ enum JobStatus {
   PROCESSING
   COMPLETED
   FAILED
+  STUCK
 }
 
 enum CollabStatus {

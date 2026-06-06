@@ -3,6 +3,7 @@ import { instagramPublishQueue } from "../config/queues";
 import { isRedisEnabled } from "../config/redis";
 
 const RECOVERY_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const STUCK_THRESHOLD_MINUTES = 10;
 
 export function startRecoveryCron() {
   if (!isRedisEnabled) {
@@ -14,10 +15,13 @@ export function startRecoveryCron() {
 
   setInterval(async () => {
     try {
-      console.log("[Recovery Cron] Checking for stalled publishing jobs...");
-
+      console.log("[Recovery Cron] Running...");
       const now = new Date();
-      // Find jobs that should have published by now but are still PENDING
+      const stuckCutoff = new Date(now.getTime() - STUCK_THRESHOLD_MINUTES * 60 * 1000);
+
+      // ── 1. Re-enqueue past-due PENDING jobs ───────────────────────────────
+      // These are jobs whose publishAt has already passed but are still PENDING.
+      // Covers the case where the worker was offline when the delay window expired.
       const stalledJobs = await prisma.publishingJob.findMany({
         where: {
           status: "PENDING",
@@ -27,28 +31,70 @@ export function startRecoveryCron() {
       });
 
       if (stalledJobs.length === 0) {
-        console.log("[Recovery Cron] No stalled jobs found.");
-        return;
-      }
+        console.log("[Recovery Cron] No past-due stalled jobs found.");
+      } else {
+        console.warn(`[Recovery Cron] Found ${stalledJobs.length} past-due stalled job(s). Re-enqueuing...`);
 
-      console.warn(`[Recovery Cron] Found ${stalledJobs.length} stalled jobs. Re-enqueuing...`);
+        for (const job of stalledJobs) {
+          if (!instagramPublishQueue) continue;
 
-      for (const job of stalledJobs) {
-        if (!instagramPublishQueue) continue;
+          // Skip if the post is no longer in a publishable state
+          if (job.post.status !== "SCHEDULED" && job.post.status !== "PUBLISHING") {
+            console.log(
+              `[Recovery Cron] Skipping stalled job ${job.id} — post status is ${job.post.status}`
+            );
+            continue;
+          }
 
-        // Skip if somehow the post is no longer scheduled
-        if (job.post.status !== "SCHEDULED" && job.post.status !== "PUBLISHING") {
-          console.log(`[Recovery Cron] Skipping job ${job.id} because post is in status ${job.post.status}`);
-          continue;
+          await instagramPublishQueue.add(
+            "publish-job",
+            { jobId: job.id, postId: job.postId },
+            { delay: 0, attempts: 3, backoff: { type: "exponential", delay: 60000 } }
+          );
+          console.log(`[Recovery Cron] Re-enqueued past-due job ${job.id} (post: ${job.postId})`);
         }
-
-        await instagramPublishQueue.add(
-          "publish-job",
-          { jobId: job.id, postId: job.postId },
-          { delay: 0, attempts: 3, backoff: { type: "exponential", delay: 60000 } }
-        );
-        console.log(`[Recovery Cron] Re-enqueued job ${job.id} (Post: ${job.postId})`);
       }
+
+      // ── 2. Detect STUCK jobs ───────────────────────────────────────────────
+      // A job is STUCK if it:
+      //   • is still PENDING
+      //   • has never been attempted (attempts === 0)
+      //   • was created more than STUCK_THRESHOLD_MINUTES ago
+      //   • publishAt is still in the future (past-due ones are handled above)
+      //
+      // This catches the case where BullMQ enqueue silently failed AFTER the
+      // DB transaction committed (e.g., mid-restart), leaving the job with a
+      // future publishAt that will never fire.
+      const stuckJobs = await prisma.publishingJob.findMany({
+        where: {
+          status: "PENDING",
+          attempts: 0,
+          createdAt: { lt: stuckCutoff },
+          publishAt: { gt: now }
+        },
+        include: { post: true }
+      });
+
+      if (stuckJobs.length === 0) {
+        console.log("[Recovery Cron] No stuck jobs found.");
+      } else {
+        console.warn(`[Recovery Cron] Found ${stuckJobs.length} stuck job(s). Marking STUCK...`);
+
+        for (const job of stuckJobs) {
+          await prisma.publishingJob.update({
+            where: { id: job.id },
+            data: {
+              status: "STUCK",
+              lastError: `Job was created ${STUCK_THRESHOLD_MINUTES}+ minutes ago but was never enqueued. Detected by recovery cron.`
+            }
+          });
+          console.warn(
+            `[Recovery Cron] Job ${job.id} (post: ${job.postId}) marked STUCK. Created: ${job.createdAt.toISOString()}, PublishAt: ${job.publishAt.toISOString()}`
+          );
+        }
+      }
+
+      console.log("[Recovery Cron] Run complete.");
     } catch (err) {
       console.error("[Recovery Cron] Error during recovery check:", err);
     }

@@ -105,6 +105,39 @@ export class PlannerService {
     return PlannerRepository.deleteShoot(id, userId);
   }
 
+  /**
+   * Validates that the instagram publish queue is initialised and its underlying
+   * Redis connection is in a usable state.  Throws a 503 if the queue is not
+   * healthy so that we never transition a Post to SCHEDULED when publishing is
+   * unavailable.
+   */
+  private static async assertQueueHealthy(): Promise<void> {
+    if (!instagramPublishQueue) {
+      throw Object.assign(
+        new Error("Publishing queue is unavailable (Redis disabled). Please try again later."),
+        { statusCode: 503 }
+      );
+    }
+    // ioredis exposes a .status property on the underlying connection
+    const conn = (instagramPublishQueue.opts.connection as any);
+    const status: string | undefined = conn?.status;
+    if (status && status !== "ready" && status !== "connect") {
+      throw Object.assign(
+        new Error(`Publishing queue is not ready (Redis status: ${status}). Please try again later.`),
+        { statusCode: 503 }
+      );
+    }
+    // Live PING to catch quota-exceeded or network errors before any DB write
+    try {
+      await (instagramPublishQueue.opts.connection as any).ping();
+    } catch (err: any) {
+      throw Object.assign(
+        new Error(`Publishing queue health check failed: ${err.message}`),
+        { statusCode: 503 }
+      );
+    }
+  }
+
   static async schedulePost(id: string, userId: string) {
     const post = await prisma.post.findUnique({
       where: { id, userId },
@@ -161,15 +194,49 @@ export class PlannerService {
       throw Object.assign(new Error("Caption must be added before scheduling."), { statusCode: 400 });
     }
 
-    const updatedPost = await prisma.post.update({
-      where: { id },
-      data: {
-        status: PostStatus.SCHEDULED,
-        scheduledAt: new Date(),
-        scheduledByUserId: userId
-      }
-    });
+    // ── STEP 1: Verify queue health BEFORE touching the database ──────────
+    // If Redis is down/quota exceeded, this throws 503 and the DB is untouched.
+    await PlannerService.assertQueueHealthy();
 
+    // ── STEP 2: Commit Post → SCHEDULED and PublishingJob → PENDING inside
+    //            a single transaction so both succeed or neither does. ──────
+    let updatedPost: Post;
+    let job: { id: string };
+
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const txPost = await tx.post.update({
+          where: { id },
+          data: {
+            status: PostStatus.SCHEDULED,
+            scheduledAt: new Date(),
+            scheduledByUserId: userId
+          }
+        });
+
+        const txJob = await tx.publishingJob.create({
+          data: {
+            postId: post.id,
+            userId: user.id,
+            publishAt: post.publishAt!,
+            status: JobStatus.PENDING
+          }
+        });
+
+        return { txPost, txJob };
+      });
+
+      updatedPost = result.txPost;
+      job = result.txJob;
+    } catch (txErr: any) {
+      console.error("[PlannerService] DB transaction failed during schedulePost:", txErr);
+      throw Object.assign(
+        new Error("Failed to save scheduling data. Please try again."),
+        { statusCode: 500 }
+      );
+    }
+
+    // Update bRoll statuses (non-critical, outside transaction)
     if (post.brolls && post.brolls.length > 0) {
       await prisma.bRoll.updateMany({
         where: { id: { in: post.brolls.map(b => b.id) } },
@@ -177,24 +244,52 @@ export class PlannerService {
       });
     }
 
-    const job = await prisma.publishingJob.create({
-      data: {
-        postId: post.id,
-        userId: user.id,
-        publishAt: post.publishAt,
-        status: JobStatus.PENDING
-      }
-    });
-
-    if (instagramPublishQueue) {
-      const delay = new Date(post.publishAt).getTime() - Date.now();
-      await instagramPublishQueue.add(
+    // ── STEP 3: Attempt BullMQ enqueue ────────────────────────────────────
+    // The DB is now committed. If Redis fails here we perform a compensating
+    // update: mark the PublishingJob STUCK and revert the Post to APPROVED
+    // so the user sees an actionable 503 instead of a silent orphan.
+    try {
+      const delay = new Date(post.publishAt!).getTime() - Date.now();
+      await instagramPublishQueue!.add(
         "publish-job",
         { jobId: job.id, postId: post.id },
         { delay: Math.max(delay, 0), attempts: 3, backoff: { type: "exponential", delay: 60000 } }
       );
-    } else {
-      console.warn(`[PlannerService] instagramPublishQueue is not initialized. Job ${job.id} will not be enqueued automatically.`);
+      console.log(`[PlannerService] Job ${job.id} enqueued successfully (delay: ${Math.max(new Date(post.publishAt!).getTime() - Date.now(), 0)}ms).`);
+    } catch (enqueueErr: any) {
+      console.error(`[PlannerService] BullMQ enqueue failed for job ${job.id}:`, enqueueErr);
+
+      // Compensating update – revert to a consistent, visible state
+      await prisma.$transaction([
+        prisma.publishingJob.update({
+          where: { id: job.id },
+          data: {
+            status: JobStatus.STUCK,
+            lastError: `Enqueue failed: ${enqueueErr.message}`
+          }
+        }),
+        prisma.post.update({
+          where: { id },
+          data: { status: PostStatus.APPROVED }
+        })
+      ]);
+
+      // Revert bRoll statuses too
+      if (post.brolls && post.brolls.length > 0) {
+        await prisma.bRoll.updateMany({
+          where: { id: { in: post.brolls.map(b => b.id) } },
+          data: { status: "ATTACHED" as any }
+        });
+      }
+
+      console.warn(`[PlannerService] Job ${job.id} marked STUCK. Post ${post.id} reverted to APPROVED.`);
+      throw Object.assign(
+        new Error(
+          `Scheduling failed: publishing queue is currently unavailable (${enqueueErr.message}). ` +
+          "Your post has not been scheduled. Please try again once the issue is resolved."
+        ),
+        { statusCode: 503 }
+      );
     }
 
     return updatedPost;
@@ -218,9 +313,12 @@ export class PlannerService {
       include: { post: true }
     });
     if (!job) throw Object.assign(new Error("Job not found"), { statusCode: 404 });
-    if (job.status !== JobStatus.FAILED) {
-      throw Object.assign(new Error("Only FAILED jobs can be retried"), { statusCode: 400 });
+    if (job.status !== JobStatus.FAILED && job.status !== JobStatus.STUCK) {
+      throw Object.assign(new Error("Only FAILED or STUCK jobs can be retried"), { statusCode: 400 });
     }
+
+    // Validate queue health before retry
+    await PlannerService.assertQueueHealthy();
 
     // Reset attempts and set to PENDING
     const updatedJob = await prisma.publishingJob.update({

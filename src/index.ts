@@ -134,7 +134,8 @@ app.get("/health", async (req, res) => {
       "generateHooksQueue",
       "generatePitchQueue",
       "scanBrandQueue",
-      "generateCaptionsQueue"
+      "generateCaptionsQueue",
+      "instagramPublishQueue"
     ];
 
     const queueStatus: Record<string, string> = {};
@@ -150,6 +151,43 @@ app.get("/health", async (req, res) => {
     health.services.queues = queueStatus;
   } else {
     health.services.queues = "disabled";
+  }
+
+  // 4. Publishing Job Counts
+  try {
+    const [pendingCount, stuckCount, oldestPendingJob, oldestStuckJob] = await Promise.all([
+      prisma.publishingJob.count({ where: { status: "PENDING" } }),
+      prisma.publishingJob.count({ where: { status: "STUCK" } }),
+      prisma.publishingJob.findFirst({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "asc" }
+      }),
+      prisma.publishingJob.findFirst({
+        where: { status: "STUCK" },
+        orderBy: { createdAt: "asc" }
+      })
+    ]);
+
+    const now = new Date();
+    const oldestPendingJobAgeMinutes = oldestPendingJob
+      ? Math.max(0, Math.floor((now.getTime() - oldestPendingJob.createdAt.getTime()) / 60000))
+      : 0;
+
+    const oldestStuckJobAgeMinutes = oldestStuckJob
+      ? Math.max(0, Math.floor((now.getTime() - oldestStuckJob.createdAt.getTime()) / 60000))
+      : 0;
+
+    health.services.publishingJobs = { pending: pendingCount, stuck: stuckCount };
+    health.oldestPendingJobAgeMinutes = oldestPendingJobAgeMinutes;
+    health.oldestStuckJobAgeMinutes = oldestStuckJobAgeMinutes;
+
+    if (stuckCount > 0) {
+      health.status = "degraded";
+    }
+  } catch (err: any) {
+    health.services.publishingJobs = `error: ${err.message}`;
+    health.oldestPendingJobAgeMinutes = 0;
+    health.oldestStuckJobAgeMinutes = 0;
   }
 
   if (hasError) {
