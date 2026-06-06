@@ -237,10 +237,20 @@ app.get("/api/railway-audit", async (req, res) => {
       });
     }
 
+    const redisEnv: Record<string, string> = {};
+    for (const key of Object.keys(process.env)) {
+      if (key.includes("REDIS")) {
+        const val = process.env[key] || "";
+        redisEnv[key] = val.replace(/:[^:@]*@/, ':***@').replace(/([?&]password=)[^&]*/, '$1***');
+      }
+    }
+
     res.json({
       DATABASE_URL: (process.env.DATABASE_URL || "").replace(/:[^:@]*@/, ':***@'),
       DATABASE_URL_UNMASKED: process.env.DATABASE_URL,
       NODE_ENV: process.env.NODE_ENV,
+      envKeys: Object.keys(process.env),
+      redisEnv,
       schema: { columns, migrations },
       debug: { post, jobs }
     });
