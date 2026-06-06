@@ -350,6 +350,53 @@ app.get("/api/railway-data", async (req, res) => {
   }
 });
 
+app.post("/api/recover-incident-job", async (req, res) => {
+  try {
+    const { instagramPublishQueue } = require("./config/queues");
+    const PUBLISHING_JOB_ID = "bcb71a00-8f37-4878-be4b-c35f6b7ade46";
+    const POST_ID = "f700caf9-6c81-4526-aa8a-a314c6264a4b";
+
+    if (!instagramPublishQueue) {
+      return res.status(500).json({ error: "instagramPublishQueue is not initialised" });
+    }
+
+    const job = await prisma.publishingJob.findUnique({
+      where: { id: PUBLISHING_JOB_ID },
+      include: { post: true }
+    });
+
+    if (!job) {
+      return res.status(404).json({ error: `PublishingJob ${PUBLISHING_JOB_ID} not found` });
+    }
+
+    if (job.status === "COMPLETED") {
+      return res.json({ message: "Job is already COMPLETED", job });
+    }
+
+    // Reset DB state and re-enqueue
+    await prisma.$transaction([
+      prisma.publishingJob.update({
+        where: { id: PUBLISHING_JOB_ID },
+        data: { status: "PENDING", attempts: 0, lastError: null }
+      }),
+      prisma.post.update({
+        where: { id: POST_ID },
+        data: { status: "SCHEDULED" }
+      })
+    ]);
+
+    await instagramPublishQueue.add(
+      "publish-job",
+      { jobId: PUBLISHING_JOB_ID, postId: POST_ID },
+      { delay: 0, attempts: 3, backoff: { type: "exponential", delay: 60000 } }
+    );
+
+    res.json({ message: "Job successfully reset and re-enqueued", job });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 app.get("/api/railway-logs", (req, res) => {
   res.setHeader("Content-Type", "text/plain");
   res.send(logsBuffer.join("\n"));
