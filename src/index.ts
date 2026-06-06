@@ -412,22 +412,6 @@ app.post("/api/test-schedule-flow", async (req, res) => {
   }
 });
 
-app.get("/api/inspect-job-status", async (req, res) => {
-  try {
-    const posts = await prisma.post.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: {
-        publishingJobs: {
-          orderBy: { createdAt: "desc" }
-        }
-      }
-    });
-    res.json({ posts });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 app.post("/api/recover-incident-job", async (req, res) => {
   try {
