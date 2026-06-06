@@ -357,10 +357,50 @@ app.get("/api/railway-logs", (req, res) => {
 
 app.get('/api/railway-audit-2', async (req, res) => {
   try {
+    const dns = require("dns");
+    const net = require("net");
+
+    const checkHost = (host: string, port: number): Promise<any> => {
+      return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let resolvedIp = "unknown";
+        dns.lookup(host, (err: any, address: string) => {
+          if (!err && address) {
+            resolvedIp = address;
+          }
+          socket.setTimeout(1500);
+          socket.on("connect", () => {
+            socket.destroy();
+            resolve({ host, port, resolvedIp, status: "connected" });
+          });
+          socket.on("error", (err: any) => {
+            socket.destroy();
+            resolve({ host, port, resolvedIp, status: "error", error: err.message });
+          });
+          socket.on("timeout", () => {
+            socket.destroy();
+            resolve({ host, port, resolvedIp, status: "timeout" });
+          });
+          socket.connect(port, host);
+        });
+      });
+    };
+
+    const hostsToCheck = [
+      "redis",
+      "Redis",
+      "redis.railway.internal",
+      "Redis.railway.internal",
+      "redis.railway",
+      "Redis.railway"
+    ];
+
+    const dnsResults = await Promise.all(hostsToCheck.map(h => checkHost(h, 6379)));
+
     const userCols = await prisma.$queryRawUnsafe(`SELECT column_name FROM information_schema.columns WHERE table_name = 'User' ORDER BY column_name`);
     const tables = await prisma.$queryRawUnsafe(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`);
     const migrations = await prisma.$queryRawUnsafe(`SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at DESC`);
-    res.json({ userCols, tables, migrations });
+    res.json({ dnsResults, userCols, tables, migrations });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
