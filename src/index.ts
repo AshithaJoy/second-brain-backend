@@ -5,6 +5,37 @@ import dotenv from "dotenv";
 import { cookieParser } from "./middleware/cookieParser";
 import { errorHandler } from "./middleware/error";
 
+// Logger interception for production audit logs
+const logsBuffer: string[] = [];
+const originalLog = console.log;
+const originalWarn = console.warn;
+const originalError = console.error;
+
+function formatLogMessage(args: any[]): string {
+  return args.map(arg => {
+    if (arg && arg.stack) return `${arg.message}\n${arg.stack}`;
+    return typeof arg === 'object' ? JSON.stringify(arg) : String(arg);
+  }).join(' ');
+}
+
+console.log = (...args) => {
+  logsBuffer.push(`[${new Date().toISOString()}] [INFO] ${formatLogMessage(args)}`);
+  if (logsBuffer.length > 500) logsBuffer.shift();
+  originalLog(...args);
+};
+
+console.warn = (...args) => {
+  logsBuffer.push(`[${new Date().toISOString()}] [WARN] ${formatLogMessage(args)}`);
+  if (logsBuffer.length > 500) logsBuffer.shift();
+  originalWarn(...args);
+};
+
+console.error = (...args) => {
+  logsBuffer.push(`[${new Date().toISOString()}] [ERROR] ${formatLogMessage(args)}`);
+  if (logsBuffer.length > 500) logsBuffer.shift();
+  originalError(...args);
+};
+
 // Import modules
 import authRoutes from "./modules/auth/auth.routes";
 import plannerRoutes from "./modules/planner/planner.routes";
@@ -317,6 +348,11 @@ app.get("/api/railway-data", async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.get("/api/railway-logs", (req, res) => {
+  res.setHeader("Content-Type", "text/plain");
+  res.send(logsBuffer.join("\n"));
 });
 
 app.get('/api/railway-audit-2', async (req, res) => {
