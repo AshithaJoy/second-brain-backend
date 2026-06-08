@@ -95,10 +95,15 @@ if (isRedisEnabled && redisConnection) {
           throw new Error("User does not have an active Instagram connection.");
         }
 
+        console.log(`[Worker: instagram-publish] Validating status for post ${postId}. Current status: ${post.status}`);
+        
         // We only process if post is SCHEDULED or PUBLISHING
         if (post.status !== "SCHEDULED" && post.status !== "PUBLISHING") {
+          console.error(`[Worker: instagram-publish] Aborting: Post ${postId} status is ${post.status}. Expected SCHEDULED or PUBLISHING.`);
           throw new Error(`Post ${postId} is in invalid state for publishing: ${post.status}`);
         }
+
+        console.log(`[Worker: instagram-publish] Status validation passed for post ${postId}. Proceeding to publish.`);
 
         // 2. Set statuses to PROCESSING / PUBLISHING
         await prisma.publishingJob.update({
