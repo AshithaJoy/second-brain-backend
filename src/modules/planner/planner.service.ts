@@ -27,8 +27,11 @@ export class PlannerService {
   }
 
   static async updatePost(id: string, userId: string, data: UpdatePostInput) {
-    // Check post exists first
-    await this.getPostById(id, userId);
+    // Check post exists and validate status transition
+    const existing = await this.getPostById(id, userId);
+    if (existing.status === PostStatus.SCHEDULED && data.status === PostStatus.APPROVED) {
+      throw Object.assign(new Error('Cannot change status from SCHEDULED back to APPROVED.'), { statusCode: 400 });
+    }
     return PlannerRepository.update(id, userId, data);
   }
 
